@@ -25,6 +25,9 @@ export type { ScoreBreakdownProps } from "./ScoreBreakdown";
 export { NextQuestionButton } from "./NextQuestionButton";
 export type { NextQuestionButtonProps } from "./NextQuestionButton";
 
+export { RepeatQuestionButton } from "./RepeatQuestionButton";
+export type { RepeatQuestionButtonProps } from "./RepeatQuestionButton";
+
 export { BankLoader } from "./BankLoader";
 export type { BankLoaderProps } from "./BankLoader";
 

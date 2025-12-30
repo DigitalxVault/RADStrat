@@ -15,6 +15,7 @@ import {
   PushToTalkControls,
   ProviderPanel,
   NextQuestionButton,
+  RepeatQuestionButton,
   CorrectnessIndicator,
   BankLoader,
 } from './components';
@@ -55,6 +56,7 @@ function App() {
   const loadBank = useSessionStore((state) => state.loadBank);
   const selectChoice = useSessionStore((state) => state.selectChoice);
   const nextQuestion = useSessionStore((state) => state.nextQuestion);
+  const repeatQuestion = useSessionStore((state) => state.repeatQuestion);
   const getCurrentQuestion = useSessionStore((state) => state.getCurrentQuestion);
   const isCorrect = useSessionStore((state) => state.isCorrect);
   const canTalk = useSessionStore((state) => state.canTalk);
@@ -126,6 +128,10 @@ function App() {
   const handleNextQuestion = useCallback(() => {
     nextQuestion();
   }, [nextQuestion]);
+
+  const handleRepeatQuestion = useCallback(() => {
+    repeatQuestion();
+  }, [repeatQuestion]);
 
   // ---- Render Loading State ----
   if (!questionBank || !currentQuestion) {
@@ -309,9 +315,12 @@ function App() {
               isRecording={isRecording}
             />
 
-            {/* Next Question Button */}
+            {/* Navigation Buttons */}
             {recordingState === 'completed' && (
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end gap-3 pt-4">
+                <RepeatQuestionButton
+                  onClick={handleRepeatQuestion}
+                />
                 <NextQuestionButton
                   onClick={handleNextQuestion}
                   disabled={!nextEnabled && !sessionComplete}

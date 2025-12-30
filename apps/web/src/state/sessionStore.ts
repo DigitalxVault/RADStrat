@@ -140,6 +140,8 @@ export interface SessionActions {
   previousQuestion: () => void;
   /** Jump to a specific question */
   goToQuestion: (index: number) => void;
+  /** Repeat current question (reset recording state, keep question) */
+  repeatQuestion: () => void;
 
   // ---- Session Management ----
   /** Reset entire session (keep bank, reset progress) */
@@ -590,6 +592,21 @@ export const useSessionStore = create<SessionStore>()(
             "goToQuestion"
           );
         }
+      },
+
+      repeatQuestion: () => {
+        // Reset recording state but keep current question and selected choice
+        set(
+          {
+            recordingState: "idle",
+            recordingDurationMs: 0,
+            recordingStartTime: null,
+            openaiResult: createInitialProviderResult(),
+            elevenlabsResult: createInitialProviderResult(),
+          },
+          false,
+          "repeatQuestion"
+        );
       },
 
       // ========================================================================
