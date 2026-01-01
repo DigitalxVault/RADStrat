@@ -145,6 +145,10 @@ export interface ProviderAdapterConfig {
   maxReconnectAttempts: number;
   /** Base delay for reconnection (exponential backoff) */
   reconnectBaseDelayMs: number;
+  /** Model to use (provider-specific) */
+  model?: string;
+  /** Language for transcription */
+  language?: string;
 }
 
 export interface ProviderAdapter extends RealtimeConnection {

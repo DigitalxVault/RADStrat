@@ -1,0 +1,237 @@
+/**
+ * TestModeToggle Styles
+ *
+ * Tactical/aviation-inspired segmented control with cockpit switch aesthetics.
+ * Features amber glow effects and precise, engineered feel.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+.test-mode-toggle {
+  --toggle-bg: #1a1d21;
+  --toggle-border: #2a2f36;
+  --toggle-text: #6b7280;
+  --toggle-text-active: #f8fafc;
+  --toggle-accent: #f59e0b;
+  --toggle-accent-glow: rgba(245, 158, 11, 0.4);
+  --toggle-slider-bg: linear-gradient(135deg, #292d33 0%, #1f2328 100%);
+  --toggle-slider-border: #3a3f46;
+  --toggle-sublabel: #4b5563;
+  --toggle-sublabel-active: #9ca3af;
+  --toggle-radius: 12px;
+  --toggle-padding: 4px;
+  --toggle-height: 72px;
+  --toggle-font: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: var(--toggle-bg);
+  border: 1px solid var(--toggle-border);
+  border-radius: var(--toggle-radius);
+  padding: var(--toggle-padding);
+  font-family: var(--toggle-font);
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Subtle ambient glow behind the toggle */
+.toggle-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 120% 80% at 50% 100%,
+    var(--toggle-accent-glow) 0%,
+    transparent 70%
+  );
+  opacity: 0.15;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.test-mode-toggle:hover .toggle-glow {
+  opacity: 0.25;
+}
+
+/* Sliding indicator background */
+.toggle-slider {
+  position: absolute;
+  left: var(--toggle-padding);
+  top: var(--toggle-padding);
+  width: calc(50% - var(--toggle-padding));
+  height: calc(100% - var(--toggle-padding) * 2);
+  background: var(--toggle-slider-bg);
+  border: 1px solid var(--toggle-slider-border);
+  border-radius: calc(var(--toggle-radius) - var(--toggle-padding));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 20px var(--toggle-accent-glow);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.toggle-slider--right {
+  transform: translateX(100%);
+}
+
+/* Toggle option buttons */
+.toggle-option {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 140px;
+  height: calc(var(--toggle-height) - var(--toggle-padding) * 2);
+  padding: 8px 20px;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--toggle-radius) - var(--toggle-padding));
+  color: var(--toggle-text);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.toggle-option:focus-visible {
+  outline: 2px solid var(--toggle-accent);
+  outline-offset: 2px;
+}
+
+.toggle-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.toggle-option--active {
+  color: var(--toggle-text-active);
+}
+
+/* Icon styling */
+.toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.toggle-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.toggle-option--active .toggle-icon {
+  filter: drop-shadow(0 0 4px var(--toggle-accent-glow));
+  color: var(--toggle-accent);
+}
+
+.toggle-option:not(:disabled):hover .toggle-icon {
+  transform: scale(1.1);
+}
+
+/* Label styling */
+.toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: text-shadow 0.2s ease;
+}
+
+.toggle-option--active .toggle-label {
+  text-shadow: 0 0 12px var(--toggle-accent-glow);
+}
+
+/* Sublabel styling */
+.toggle-sublabel {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: var(--toggle-sublabel);
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.toggle-option--active .toggle-sublabel {
+  color: var(--toggle-sublabel-active);
+}
+
+/* Hover effects for inactive options */
+.toggle-option:not(.toggle-option--active):not(:disabled):hover {
+  color: var(--toggle-text-active);
+}
+
+.toggle-option:not(.toggle-option--active):not(:disabled):hover .toggle-sublabel {
+  color: var(--toggle-sublabel-active);
+}
+
+/* Active press effect */
+.toggle-option:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .test-mode-toggle {
+    --toggle-height: 64px;
+  }
+
+  .toggle-option {
+    min-width: 110px;
+    padding: 6px 12px;
+  }
+
+  .toggle-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .toggle-label {
+    font-size: 11px;
+  }
+
+  .toggle-sublabel {
+    font-size: 9px;
+  }
+}
+
+/* Light mode variant (optional) */
+@media (prefers-color-scheme: light) {
+  .test-mode-toggle[data-theme="auto"] {
+    --toggle-bg: #f1f5f9;
+    --toggle-border: #e2e8f0;
+    --toggle-text: #64748b;
+    --toggle-text-active: #0f172a;
+    --toggle-slider-bg: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    --toggle-slider-border: #cbd5e1;
+    --toggle-sublabel: #94a3b8;
+    --toggle-sublabel-active: #475569;
+    --toggle-accent-glow: rgba(245, 158, 11, 0.3);
+  }
+}
+
+/* Animation for mode change feedback */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 2px 8px rgba(0, 0, 0, 0.3),
+      0 0 20px var(--toggle-accent-glow);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 2px 8px rgba(0, 0, 0, 0.3),
+      0 0 30px var(--toggle-accent-glow);
+  }
+}
+
+.toggle-slider {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

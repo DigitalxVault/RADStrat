@@ -20,14 +20,16 @@ import type {
   ProviderMetrics,
   ScoringBreakdown,
   WordTiming,
+  TestMode,
+  OpenAIScoreResult,
 } from "@rsta/shared";
 import {
-  calculateClarity,
-  calculatePace,
+  calculateAccuracy,
+  calculateFluency,
   calculateStructure,
   calculateOverall,
-  detectFillers,
 } from "../scoring";
+import { scoreWithOpenAI } from "../services/openaiChatScoring";
 import appConfig from "../data/app_config.json";
 
 // ============================================================================
@@ -82,6 +84,14 @@ export interface SessionState {
   openaiResult: ProviderResult;
   /** ElevenLabs provider result */
   elevenlabsResult: ProviderResult;
+
+  // ---- Test Mode ----
+  /** Current test mode */
+  testMode: TestMode;
+  /** Open-ended AI scoring result */
+  openEndedResult: OpenAIScoreResult | null;
+  /** Whether AI scoring is in progress */
+  isAIScoring: boolean;
 }
 
 /**
@@ -149,6 +159,12 @@ export interface SessionActions {
   /** Clear everything including bank */
   clearAll: () => void;
 
+  // ---- Test Mode ----
+  /** Set test mode */
+  setTestMode: (mode: TestMode) => void;
+  /** Score open-ended response using AI */
+  scoreOpenEndedResponse: (transcript: string) => Promise<void>;
+
   // ---- Computed Getters ----
   /** Get current question */
   getCurrentQuestion: () => Question | null;
@@ -179,6 +195,9 @@ const initialState: SessionState = {
   recordingStartTime: null,
   openaiResult: createInitialProviderResult(),
   elevenlabsResult: createInitialProviderResult(),
+  testMode: "read-aloud",
+  openEndedResult: null,
+  isAIScoring: false,
 };
 
 // ============================================================================
@@ -240,7 +259,7 @@ export const useSessionStore = create<SessionStore>()(
       // ========================================================================
 
       startRecording: () => {
-        const { selectedChoiceIndex, recordingState, questionBank } = get();
+        const { selectedChoiceIndex, recordingState, questionBank, testMode } = get();
 
         // Guard: must have bank loaded
         if (!questionBank) {
@@ -248,8 +267,8 @@ export const useSessionStore = create<SessionStore>()(
           return;
         }
 
-        // Guard: must have a choice selected
-        if (selectedChoiceIndex === null) {
+        // Guard: must have a choice selected (only in read-aloud mode)
+        if (testMode === "read-aloud" && selectedChoiceIndex === null) {
           console.warn("Cannot start recording: no choice selected");
           return;
         }
@@ -274,6 +293,9 @@ export const useSessionStore = create<SessionStore>()(
               ...createInitialProviderResult(),
               status: "connecting",
             },
+            // Reset open-ended result for new recording
+            openEndedResult: null,
+            isAIScoring: false,
           },
           false,
           "startRecording"
@@ -451,42 +473,38 @@ export const useSessionStore = create<SessionStore>()(
             ? currentQuestion.options[state.selectedChoiceIndex]
             : currentQuestion.expectedSpokenAnswer;
 
-        // Calculate clarity score
-        const clarityResult = calculateClarity(transcript, expected);
+        // Calculate accuracy score (pure text similarity)
+        const accuracyResult = calculateAccuracy(transcript, expected);
 
-        // Calculate pace score (use word timings if available, or estimate)
-        const words = result.words || estimateWordTimings(transcript, result.durationMs);
-        const paceResult = calculatePace(words, result.durationMs);
+        // Calculate fluency score (filler word detection)
+        const fluencyResult = calculateFluency(transcript);
 
-        // Calculate structure score
+        // Calculate structure score (radio protocol adherence)
         const structureResult = calculateStructure(
           transcript,
           currentQuestion.structureMode,
           currentQuestion.expectedKeywords
         );
 
-        // Calculate overall score
+        // Calculate overall score with new weights: 50% accuracy, 30% fluency, 20% structure
         const overall = calculateOverall(
-          clarityResult.score,
-          paceResult.score,
+          accuracyResult.score,
+          fluencyResult.score,
           structureResult.score
         );
 
-        // Detect fillers in transcript
-        const fillers = detectFillers(transcript);
-
         // Create metrics object
         const metrics: ProviderMetrics = {
-          clarity: clarityResult.score,
-          pace: paceResult.score,
+          accuracy: accuracyResult.score,
+          fluency: fluencyResult.score,
           structure: structureResult.score,
           overall,
         };
 
         // Create breakdown object
         const breakdown: ScoringBreakdown = {
-          clarity: clarityResult.breakdown,
-          pace: paceResult.breakdown,
+          accuracy: accuracyResult.breakdown,
+          fluency: fluencyResult.breakdown,
           structure: structureResult.breakdown,
         };
 
@@ -495,13 +513,13 @@ export const useSessionStore = create<SessionStore>()(
         const durationMinutes = result.durationMs / 60000;
         const estimatedCost = costRate * durationMinutes;
 
-        // Update provider result
+        // Update provider result with fillers from fluency breakdown
         set(
           {
             [resultKey]: {
               ...result,
               status: "completed",
-              fillers,
+              fillers: fluencyResult.breakdown.fillers,
               metrics,
               breakdown,
               cost: {
@@ -545,6 +563,8 @@ export const useSessionStore = create<SessionStore>()(
               recordingStartTime: null,
               openaiResult: createInitialProviderResult(),
               elevenlabsResult: createInitialProviderResult(),
+              openEndedResult: null,
+              isAIScoring: false,
             },
             false,
             "nextQuestion"
@@ -565,6 +585,8 @@ export const useSessionStore = create<SessionStore>()(
               recordingStartTime: null,
               openaiResult: createInitialProviderResult(),
               elevenlabsResult: createInitialProviderResult(),
+              openEndedResult: null,
+              isAIScoring: false,
             },
             false,
             "previousQuestion"
@@ -587,6 +609,8 @@ export const useSessionStore = create<SessionStore>()(
               recordingStartTime: null,
               openaiResult: createInitialProviderResult(),
               elevenlabsResult: createInitialProviderResult(),
+              openEndedResult: null,
+              isAIScoring: false,
             },
             false,
             "goToQuestion"
@@ -603,6 +627,8 @@ export const useSessionStore = create<SessionStore>()(
             recordingStartTime: null,
             openaiResult: createInitialProviderResult(),
             elevenlabsResult: createInitialProviderResult(),
+            openEndedResult: null,
+            isAIScoring: false,
           },
           false,
           "repeatQuestion"
@@ -630,6 +656,89 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       // ========================================================================
+      // Test Mode
+      // ========================================================================
+
+      setTestMode: (mode: TestMode) => {
+        const { testMode } = get();
+        if (mode === testMode) return;
+
+        // Reset state when switching modes
+        set(
+          {
+            testMode: mode,
+            selectedChoiceIndex: null,
+            recordingState: "idle",
+            recordingDurationMs: 0,
+            recordingStartTime: null,
+            openaiResult: createInitialProviderResult(),
+            elevenlabsResult: createInitialProviderResult(),
+            openEndedResult: null,
+            isAIScoring: false,
+          },
+          false,
+          "setTestMode"
+        );
+      },
+
+      scoreOpenEndedResponse: async (transcript: string) => {
+        const state = get();
+        const currentQuestion = state.getCurrentQuestion();
+
+        if (!currentQuestion) {
+          console.warn("Cannot score: no current question");
+          return;
+        }
+
+        if (!transcript || transcript.trim().length === 0) {
+          console.warn("Cannot score: empty transcript");
+          return;
+        }
+
+        // Set scoring in progress
+        set({ isAIScoring: true }, false, "scoreOpenEndedResponse/start");
+
+        try {
+          const result = await scoreWithOpenAI({
+            transcript,
+            expectedAnswer: currentQuestion.expectedSpokenAnswer,
+            scenarioPrompt: currentQuestion.prompt,
+            structureMode: currentQuestion.structureMode,
+          });
+
+          set(
+            {
+              openEndedResult: result,
+              isAIScoring: false,
+              recordingState: "completed",
+            },
+            false,
+            "scoreOpenEndedResponse/success"
+          );
+        } catch (error) {
+          console.error("AI scoring failed:", error);
+          set(
+            {
+              isAIScoring: false,
+              openEndedResult: {
+                accuracy: 0,
+                fluency: 0,
+                structure: 0,
+                overall: 0,
+                feedback: `Scoring failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+                fillerWords: [],
+                fillerCount: 0,
+                radioProtocolNotes: "Unable to evaluate due to scoring error.",
+              },
+              recordingState: "completed",
+            },
+            false,
+            "scoreOpenEndedResponse/error"
+          );
+        }
+      },
+
+      // ========================================================================
       // Computed Getters
       // ========================================================================
 
@@ -653,7 +762,12 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       canTalk: () => {
-        const { selectedChoiceIndex, recordingState, questionBank } = get();
+        const { selectedChoiceIndex, recordingState, questionBank, testMode } = get();
+        // In open-ended mode, no choice selection required
+        if (testMode === "open-ended") {
+          return questionBank !== null && recordingState === "idle";
+        }
+        // In read-aloud mode, must have choice selected
         return (
           questionBank !== null &&
           selectedChoiceIndex !== null &&
@@ -698,33 +812,6 @@ export const useSessionStore = create<SessionStore>()(
 );
 
 // ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Estimate word timings when not provided by the STT provider
- * Creates evenly-spaced word timings based on transcript and duration
- */
-function estimateWordTimings(transcript: string, durationMs: number): WordTiming[] {
-  if (!transcript || durationMs <= 0) {
-    return [];
-  }
-
-  const words = transcript.trim().split(/\s+/);
-  if (words.length === 0) {
-    return [];
-  }
-
-  const timePerWord = durationMs / words.length;
-
-  return words.map((wordText, index) => ({
-    word: wordText,
-    startMs: Math.round(index * timePerWord),
-    endMs: Math.round((index + 1) * timePerWord),
-  }));
-}
-
-// ============================================================================
 // Selector Hooks (for optimized re-renders)
 // ============================================================================
 
@@ -751,5 +838,17 @@ export const useElevenLabsResult = () =>
 /** Select question bank */
 export const useQuestionBank = () =>
   useSessionStore((state) => state.questionBank);
+
+/** Select test mode */
+export const useTestMode = () =>
+  useSessionStore((state) => state.testMode);
+
+/** Select open-ended result */
+export const useOpenEndedResult = () =>
+  useSessionStore((state) => state.openEndedResult);
+
+/** Select AI scoring state */
+export const useIsAIScoring = () =>
+  useSessionStore((state) => state.isAIScoring);
 
 export default useSessionStore;

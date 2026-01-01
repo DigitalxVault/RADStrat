@@ -1,21 +1,21 @@
 /**
  * Overall Score Calculation
  *
- * Combines clarity, pace, and structure scores into a weighted overall score.
+ * Combines accuracy, fluency, and structure scores into a weighted overall score.
  *
- * Formula: round(0.40 * clarity + 0.30 * pace + 0.30 * structure)
+ * Formula: round(0.50 * accuracy + 0.30 * fluency + 0.20 * structure)
  *
- * Weights are sourced from PRD and app_config.json:
- * - Clarity: 40%
- * - Pace: 30%
- * - Structure: 30%
+ * Weights (as per requirements):
+ * - Accuracy: 50% (text similarity - did they say the right words?)
+ * - Fluency: 30% (clean speech - no filler words)
+ * - Structure: 20% (radio protocol adherence)
  */
 
-// Scoring weights (matching app_config.json)
+// Scoring weights
 const WEIGHTS = {
-  clarity: 0.40,
-  pace: 0.30,
-  structure: 0.30,
+  accuracy: 0.50,
+  fluency: 0.30,
+  structure: 0.20,
 } as const;
 
 /**
@@ -27,27 +27,34 @@ function clamp(value: number, min: number, max: number): number {
 
 /**
  * Calculates the weighted overall score
- * @param clarity - Clarity score (0-100)
- * @param pace - Pace score (0-100)
+ * @param accuracy - Accuracy score (0-100)
+ * @param fluency - Fluency score (0-100)
  * @param structure - Structure score (0-100)
  * @returns Overall score (0-100), rounded to nearest integer
  */
 export function calculateOverall(
-  clarity: number,
-  pace: number,
+  accuracy: number,
+  fluency: number,
   structure: number
 ): number {
   // Ensure all inputs are within valid range
-  const clampedClarity = clamp(clarity, 0, 100);
-  const clampedPace = clamp(pace, 0, 100);
+  const clampedAccuracy = clamp(accuracy, 0, 100);
+  const clampedFluency = clamp(fluency, 0, 100);
   const clampedStructure = clamp(structure, 0, 100);
 
   // Calculate weighted sum
   const weighted =
-    WEIGHTS.clarity * clampedClarity +
-    WEIGHTS.pace * clampedPace +
+    WEIGHTS.accuracy * clampedAccuracy +
+    WEIGHTS.fluency * clampedFluency +
     WEIGHTS.structure * clampedStructure;
 
   // Round to nearest integer and clamp to 0-100
   return Math.round(clamp(weighted, 0, 100));
+}
+
+/**
+ * Returns the current scoring weights
+ */
+export function getScoringWeights(): typeof WEIGHTS {
+  return WEIGHTS;
 }

@@ -16,6 +16,7 @@ import { errorHandler, notFoundHandler } from './middleware/errors.js';
 import healthRouter from './routes/health.js';
 import tokenOpenAIRouter from './routes/tokenOpenAI.js';
 import tokenElevenLabsRouter from './routes/tokenElevenLabs.js';
+import chatOpenAIRouter from './routes/chatOpenAI.js';
 
 /**
  * Create and configure Express application
@@ -65,6 +66,9 @@ app.use('/api/health', healthRouter);
 // Token minting routes (with token rate limiting - 60 req/min)
 app.use('/api/token/openai', tokenRateLimiter, tokenOpenAIRouter);
 app.use('/api/token/elevenlabs', tokenRateLimiter, tokenElevenLabsRouter);
+
+// OpenAI Chat API proxy (for open-ended scoring)
+app.use('/api/openai/chat', generalRateLimiter, chatOpenAIRouter);
 
 // Transcribe endpoints (with stricter rate limiting - 30 req/min)
 // Placeholder for future transcribe routes

@@ -98,6 +98,7 @@ router.post("/", async (req: Request, res: Response) => {
         modalities: ["audio", "text"],
         input_audio_transcription: {
           model: "whisper-1",
+          language: "en", // IMPORTANT: Force English transcription
         },
         // Disable turn detection - we control when recording stops
         turn_detection: null,

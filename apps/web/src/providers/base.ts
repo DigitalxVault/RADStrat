@@ -310,6 +310,41 @@ export abstract class BaseProviderAdapter implements ProviderAdapter {
     this.reconnectAttempts = 0;
   }
 
+  /**
+   * Reset adapter state for a new recording without disconnecting WebSocket.
+   * This preserves the connection while clearing transcript and timing data.
+   * Used by connection pool to prepare for next recording.
+   */
+  resetForNewRecording(): void {
+    this.log('Resetting for new recording (keeping connection)');
+
+    // Reset transcript state
+    this.transcript = {
+      interimText: '',
+      committedText: '',
+      finalText: '',
+      isFinal: false,
+    };
+    this.wordTimings = [];
+    this.fillerCounts.clear();
+    this.errors = [];
+    this.startedAt = Date.now();
+    this.completedAt = null;
+
+    // Reset status to listening if still connected
+    if (this._state === 'connected') {
+      this._status = 'listening';
+    }
+  }
+
+  /**
+   * Check if the adapter is fully ready for audio streaming.
+   * Returns true only when WebSocket is open and connection is established.
+   */
+  isFullyReady(): boolean {
+    return this._state === 'connected' && this.websocket?.readyState === WebSocket.OPEN;
+  }
+
   dispose(): void {
     this.log('Disposing adapter');
     this.disconnect();

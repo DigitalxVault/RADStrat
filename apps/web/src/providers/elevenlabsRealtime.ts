@@ -1,36 +1,51 @@
 /**
  * ElevenLabs Realtime STT Provider Adapter
  *
- * Implements real-time speech-to-text using ElevenLabs WebSocket API.
- * Handles streaming audio, interim transcripts, and word-level timing.
+ * Implements real-time speech-to-text using ElevenLabs Scribe WebSocket API.
+ * Audio must be sent as JSON with base64-encoded PCM data.
+ *
+ * Protocol Reference (Context7):
+ * - Audio: JSON with message_type, audio_base_64, commit, sample_rate
+ * - Events: session_started, partial_transcript, committed_transcript, etc.
  */
 
 import { BaseProviderAdapter } from './base';
 import type { WordTiming } from './types';
 
 // ============================================================================
-// ELEVENLABS API TYPES
+// ELEVENLABS SCRIBE API TYPES
 // ============================================================================
 
-/** ElevenLabs audio format configuration */
-interface ElevenLabsAudioFormat {
+/** Audio input chunk message */
+interface ElevenLabsAudioChunk {
+  message_type: 'input_audio_chunk';
+  audio_base_64: string;
+  commit: boolean;
   sample_rate: number;
-  channels: number;
-  encoding: 'pcm_s16le' | 'pcm_f32le';
 }
 
-/** ElevenLabs start configuration message */
-interface ElevenLabsStartMessage {
-  type: 'start';
-  audio_format: ElevenLabsAudioFormat;
-  language_code: string;
+/** Session started event - NOTE: ElevenLabs uses message_type not type */
+interface ElevenLabsSessionStarted {
+  message_type: 'session_started';
+  session_id?: string;
 }
 
-/** ElevenLabs transcript event from WebSocket */
-interface ElevenLabsTranscriptEvent {
-  type: 'transcript';
+/** Partial transcript event (interim) */
+interface ElevenLabsPartialTranscript {
+  message_type: 'partial_transcript';
   text: string;
-  is_final: boolean;
+}
+
+/** Committed transcript event (final) */
+interface ElevenLabsCommittedTranscript {
+  message_type: 'committed_transcript';
+  text: string;
+}
+
+/** Committed transcript with timestamps */
+interface ElevenLabsCommittedTranscriptWithTimestamps {
+  message_type: 'committed_transcript_with_timestamps';
+  text: string;
   words?: ElevenLabsWordInfo[];
 }
 
@@ -42,47 +57,35 @@ interface ElevenLabsWordInfo {
   confidence?: number;
 }
 
-/** ElevenLabs word event */
-interface ElevenLabsWordEvent {
-  type: 'word';
-  word: string;
-  start: number; // seconds
-  end: number; // seconds
-  confidence?: number;
-}
-
-/** ElevenLabs error event */
+/** Error events - ElevenLabs error types */
 interface ElevenLabsErrorEvent {
-  type: 'error';
+  message_type:
+    | 'scribeError'
+    | 'scribeAuthError'
+    | 'scribeQuotaExceededError'
+    | 'scribeThrottledError'
+    | 'scribeRateLimitedError'
+    | 'scribeInputError'
+    | 'input_error';
   code?: string;
-  message: string;
-}
-
-/** ElevenLabs end event */
-interface ElevenLabsEndEvent {
-  type: 'end';
+  message?: string;
+  error?: string;
 }
 
 /** Union of all ElevenLabs events */
 type ElevenLabsEvent =
-  | ElevenLabsTranscriptEvent
-  | ElevenLabsWordEvent
-  | ElevenLabsErrorEvent
-  | ElevenLabsEndEvent;
+  | ElevenLabsSessionStarted
+  | ElevenLabsPartialTranscript
+  | ElevenLabsCommittedTranscript
+  | ElevenLabsCommittedTranscriptWithTimestamps
+  | ElevenLabsErrorEvent;
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
-/** Default audio format for ElevenLabs STT */
-const DEFAULT_AUDIO_FORMAT: ElevenLabsAudioFormat = {
-  sample_rate: 16000,
-  channels: 1,
-  encoding: 'pcm_s16le',
-};
-
-/** Default language code */
-const DEFAULT_LANGUAGE_CODE = 'en';
+/** Default sample rate for ElevenLabs Scribe */
+const DEFAULT_SAMPLE_RATE = 16000;
 
 // ============================================================================
 // ELEVENLABS REALTIME ADAPTER
@@ -91,36 +94,35 @@ const DEFAULT_LANGUAGE_CODE = 'en';
 /**
  * ElevenLabs Realtime Speech-to-Text Adapter
  *
- * Connects to ElevenLabs WebSocket API for real-time transcription.
- * Supports PCM16 audio at 16kHz mono.
+ * Connects to ElevenLabs Scribe WebSocket API for real-time transcription.
+ * Uses JSON messages with base64-encoded PCM audio.
  */
 export class ElevenLabsRealtimeAdapter extends BaseProviderAdapter {
   readonly providerId = 'elevenlabs' as const;
 
-  /** Audio format configuration */
-  private audioFormat: ElevenLabsAudioFormat = { ...DEFAULT_AUDIO_FORMAT };
+  /** Sample rate for audio */
+  private sampleRate: number = DEFAULT_SAMPLE_RATE;
 
-  /** Language code for transcription */
-  private languageCode: string = DEFAULT_LANGUAGE_CODE;
+  /** Track if session is ready */
+  private sessionStarted: boolean = false;
 
   // ============================================================================
   // CONFIGURATION
   // ============================================================================
 
   /**
-   * Configure audio format for ElevenLabs
+   * Set the sample rate for audio
    */
-  setAudioFormat(format: Partial<ElevenLabsAudioFormat>): void {
-    this.audioFormat = { ...this.audioFormat, ...format };
-    this.log('Audio format configured', this.audioFormat);
+  setSampleRate(rate: number): void {
+    this.sampleRate = rate;
+    this.log('Sample rate set', rate);
   }
 
   /**
-   * Set the language code for transcription
+   * Check if the ElevenLabs session is fully ready
    */
-  setLanguageCode(code: string): void {
-    this.languageCode = code;
-    this.log('Language code set', code);
+  isSessionReady(): boolean {
+    return this.sessionStarted && this.isConnected();
   }
 
   // ============================================================================
@@ -128,7 +130,7 @@ export class ElevenLabsRealtimeAdapter extends BaseProviderAdapter {
   // ============================================================================
 
   /**
-   * Handle incoming WebSocket messages from ElevenLabs
+   * Handle incoming WebSocket messages from ElevenLabs Scribe API
    */
   protected handleMessage(data: string | ArrayBuffer): void {
     // ElevenLabs sends JSON text messages
@@ -139,27 +141,37 @@ export class ElevenLabsRealtimeAdapter extends BaseProviderAdapter {
 
     try {
       const event = JSON.parse(data) as ElevenLabsEvent;
-      this.log('Received event', event.type);
+      this.log('Received event', event.message_type);
 
-      switch (event.type) {
-        case 'transcript':
-          this.handleTranscriptEvent(event);
+      switch (event.message_type) {
+        case 'session_started':
+          this.handleSessionStarted(event);
           break;
 
-        case 'word':
-          this.handleWordEvent(event);
+        case 'partial_transcript':
+          this.handlePartialTranscript(event);
           break;
 
-        case 'error':
+        case 'committed_transcript':
+          this.handleCommittedTranscript(event);
+          break;
+
+        case 'committed_transcript_with_timestamps':
+          this.handleCommittedTranscriptWithTimestamps(event);
+          break;
+
+        case 'scribeError':
+        case 'scribeAuthError':
+        case 'scribeQuotaExceededError':
+        case 'scribeThrottledError':
+        case 'scribeRateLimitedError':
+        case 'scribeInputError':
+        case 'input_error':
           this.handleErrorEvent(event);
           break;
 
-        case 'end':
-          this.handleEndEvent();
-          break;
-
         default:
-          this.log('Unknown event type', (event as { type: string }).type);
+          this.log('Unknown event type', (event as { message_type: string }).message_type);
       }
     } catch (error) {
       this.log('Failed to parse message', error);
@@ -169,34 +181,57 @@ export class ElevenLabsRealtimeAdapter extends BaseProviderAdapter {
 
   /**
    * Create the initial configuration message
+   *
+   * ElevenLabs Scribe API doesn't require a configuration message -
+   * the token URL includes all necessary configuration.
    */
   protected createConfigurationMessage(): string | null {
-    const message: ElevenLabsStartMessage = {
-      type: 'start',
-      audio_format: this.audioFormat,
-      language_code: this.languageCode,
+    // No configuration message needed - token URL handles config
+    this.log('ElevenLabs Scribe: No configuration message needed');
+    return null;
+  }
+
+  /**
+   * Format audio data for sending to ElevenLabs Scribe API
+   *
+   * CRITICAL: ElevenLabs requires JSON with base64-encoded audio,
+   * NOT raw binary data.
+   */
+  protected formatAudioForSending(chunk: ArrayBuffer): string {
+    // Convert ArrayBuffer to base64 string
+    const uint8Array = new Uint8Array(chunk);
+    let binary = '';
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    const base64Audio = btoa(binary);
+
+    // Create the JSON message per ElevenLabs Scribe protocol
+    const message: ElevenLabsAudioChunk = {
+      message_type: 'input_audio_chunk',
+      audio_base_64: base64Audio,
+      commit: false,
+      sample_rate: this.sampleRate,
     };
 
-    this.log('Sending start configuration', message);
     return JSON.stringify(message);
   }
 
   /**
-   * Format audio data for sending to ElevenLabs
-   *
-   * ElevenLabs accepts raw PCM binary data directly
-   */
-  protected formatAudioForSending(chunk: ArrayBuffer): ArrayBuffer {
-    // ElevenLabs accepts raw PCM data directly
-    return chunk;
-  }
-
-  /**
    * Create the end-of-audio signal message
+   *
+   * Sends a commit message to finalize transcription.
    */
   protected createEndAudioMessage(): string | null {
-    const message = { type: 'end_of_audio' };
-    this.log('Sending end of audio signal');
+    // Send a final commit message to signal end of audio
+    const message: ElevenLabsAudioChunk = {
+      message_type: 'input_audio_chunk',
+      audio_base_64: '', // Empty audio
+      commit: true,      // Commit to trigger final transcription
+      sample_rate: this.sampleRate,
+    };
+
+    this.log('Sending commit message to finalize transcription');
     return JSON.stringify(message);
   }
 
@@ -205,102 +240,141 @@ export class ElevenLabsRealtimeAdapter extends BaseProviderAdapter {
   // ============================================================================
 
   /**
-   * Handle transcript events from ElevenLabs
+   * Handle session_started event - confirms connection is ready
    */
-  private handleTranscriptEvent(event: ElevenLabsTranscriptEvent): void {
-    const { text, is_final, words } = event;
+  private handleSessionStarted(event: ElevenLabsSessionStarted): void {
+    this.sessionStarted = true;
+    this.log('Session started', event.session_id);
+
+    this.emit('connection_state_change', {
+      type: 'connection_state_change',
+      providerId: this.providerId,
+      timestamp: Date.now(),
+      data: {
+        previousState: 'connecting',
+        currentState: 'connected',
+        reason: 'Session started',
+      },
+    });
+  }
+
+  /**
+   * Handle partial_transcript event - interim/real-time transcription
+   */
+  private handlePartialTranscript(event: ElevenLabsPartialTranscript): void {
+    const { text } = event;
+
+    // Update interim text
+    this.updateTranscript({
+      interimText: text,
+      isFinal: false,
+    });
+
+    this.emit('transcript_interim', {
+      type: 'transcript_interim',
+      providerId: this.providerId,
+      timestamp: Date.now(),
+      data: {
+        text: text,
+        isFinal: false,
+        state: this.getTranscriptState(),
+      },
+    });
+  }
+
+  /**
+   * Handle committed_transcript event - finalized text
+   */
+  private handleCommittedTranscript(event: ElevenLabsCommittedTranscript): void {
+    const { text } = event;
+
+    // Commit the text
+    this.updateTranscript({
+      committedText: this.transcript.committedText + text + ' ',
+      interimText: '',
+      finalText: text,
+      isFinal: true,
+    });
+
+    this.emit('transcript_committed', {
+      type: 'transcript_committed',
+      providerId: this.providerId,
+      timestamp: Date.now(),
+      data: {
+        text: text,
+        isFinal: true,
+        state: this.getTranscriptState(),
+      },
+    });
+
+    this.emit('transcript_final', {
+      type: 'transcript_final',
+      providerId: this.providerId,
+      timestamp: Date.now(),
+      data: {
+        text: this.transcript.committedText.trim(),
+        isFinal: true,
+        state: this.getTranscriptState(),
+      },
+    });
+
+    // Update status to completed
+    this._status = 'completed';
+    this.completedAt = Date.now();
+  }
+
+  /**
+   * Handle committed_transcript_with_timestamps - text with word timings
+   */
+  private handleCommittedTranscriptWithTimestamps(event: ElevenLabsCommittedTranscriptWithTimestamps): void {
+    const { text, words } = event;
 
     // Process word timings if available
     if (words && words.length > 0) {
       this.processWordTimings(words);
     }
 
-    if (is_final) {
-      // Final transcript - commit and emit
-      this.updateTranscript({
-        committedText: this.transcript.committedText + text + ' ',
-        interimText: '',
-        finalText: text,
-        isFinal: true,
-      });
+    // Commit the text
+    this.updateTranscript({
+      committedText: this.transcript.committedText + text + ' ',
+      interimText: '',
+      finalText: text,
+      isFinal: true,
+    });
 
-      this.emit('transcript_committed', {
-        type: 'transcript_committed',
-        providerId: this.providerId,
-        timestamp: Date.now(),
-        data: {
-          text: text,
-          isFinal: true,
-          state: this.getTranscriptState(),
-        },
-      });
-
-      this.emit('transcript_final', {
-        type: 'transcript_final',
-        providerId: this.providerId,
-        timestamp: Date.now(),
-        data: {
-          text: this.transcript.committedText.trim(),
-          isFinal: true,
-          state: this.getTranscriptState(),
-        },
-      });
-
-      // Update status to completed
-      this._status = 'completed';
-      this.completedAt = Date.now();
-    } else {
-      // Interim transcript - update but don't commit
-      this.updateTranscript({
-        interimText: text,
-        isFinal: false,
-      });
-
-      this.emit('transcript_interim', {
-        type: 'transcript_interim',
-        providerId: this.providerId,
-        timestamp: Date.now(),
-        data: {
-          text: text,
-          isFinal: false,
-          state: this.getTranscriptState(),
-        },
-      });
-    }
-  }
-
-  /**
-   * Handle individual word events from ElevenLabs
-   */
-  private handleWordEvent(event: ElevenLabsWordEvent): void {
-    const wordTiming: WordTiming = {
-      word: event.word,
-      startMs: Math.round(event.start * 1000),
-      endMs: Math.round(event.end * 1000),
-      confidence: event.confidence,
-    };
-
-    this.addWordTiming(wordTiming);
-
-    this.emit('word_timing', {
-      type: 'word_timing',
+    this.emit('transcript_committed', {
+      type: 'transcript_committed',
       providerId: this.providerId,
       timestamp: Date.now(),
       data: {
-        word: wordTiming.word,
-        startMs: wordTiming.startMs,
-        endMs: wordTiming.endMs,
-        confidence: wordTiming.confidence,
+        text: text,
+        isFinal: true,
+        state: this.getTranscriptState(),
       },
     });
+
+    this.emit('transcript_final', {
+      type: 'transcript_final',
+      providerId: this.providerId,
+      timestamp: Date.now(),
+      data: {
+        text: this.transcript.committedText.trim(),
+        isFinal: true,
+        state: this.getTranscriptState(),
+      },
+    });
+
+    // Update status to completed
+    this._status = 'completed';
+    this.completedAt = Date.now();
   }
 
   /**
-   * Handle error events from ElevenLabs
+   * Handle error events from ElevenLabs Scribe API
    */
   private handleErrorEvent(event: ElevenLabsErrorEvent): void {
-    const errorMessage = event.message || 'Unknown ElevenLabs error';
-    const errorCode = event.code || 'ELEVENLABS_ERROR';
+    const errorMessage = event.message || event.error || 'Unknown ElevenLabs error';
+    const errorCode = event.code || event.message_type || 'ELEVENLABS_ERROR';
 
     this.addError(errorMessage);
     this._status = 'error';
@@ -316,38 +390,6 @@ export class ElevenLabsRealtimeAdapter extends BaseProviderAdapter {
         details: event,
       },
     });
-  }
-
-  /**
-   * Handle end event from ElevenLabs
-   */
-  private handleEndEvent(): void {
-    this.log('Received end event from ElevenLabs');
-
-    // Finalize the transcript if not already done
-    if (!this.transcript.isFinal) {
-      const finalText = (this.transcript.committedText + this.transcript.interimText).trim();
-
-      this.updateTranscript({
-        finalText: finalText,
-        interimText: '',
-        isFinal: true,
-      });
-
-      this.emit('transcript_final', {
-        type: 'transcript_final',
-        providerId: this.providerId,
-        timestamp: Date.now(),
-        data: {
-          text: finalText,
-          isFinal: true,
-          state: this.getTranscriptState(),
-        },
-      });
-    }
-
-    this._status = 'completed';
-    this.completedAt = Date.now();
   }
 
   // ============================================================================
@@ -414,6 +456,21 @@ export class ElevenLabsRealtimeAdapter extends BaseProviderAdapter {
    */
   reset(): void {
     super.reset();
+    this.sessionStarted = false;
+  }
+
+  /**
+   * Reset for new recording without disconnecting WebSocket.
+   * Clears transcript state but keeps session and connection alive.
+   * Used by connection pool to prepare for next recording.
+   */
+  override resetForNewRecording(): void {
+    super.resetForNewRecording();
+
+    // Keep sessionStarted - we're reusing the session
+    // The WebSocket connection and session remain active
+
+    this.log('Reset for new recording (keeping session)', { sessionReady: this.sessionStarted });
   }
 }
 

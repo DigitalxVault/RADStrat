@@ -2,27 +2,33 @@
  * Dual STT Recording Hook
  *
  * Manages simultaneous recording to OpenAI and ElevenLabs STT providers.
- * Coordinates audio capture, WebSocket connections, and transcript updates.
+ * Uses PRE-CONNECTED WebSocket adapters from the connection pool for
+ * zero-delay speech capture when TALK button is pressed.
+ *
+ * Connection Lifecycle:
+ * 1. Connection pool pre-establishes WebSocket connections when question loads
+ * 2. TALK button only needs: mic permission (~50ms) + chunker start (~10ms)
+ * 3. Audio starts flowing immediately - no connection delay!
  */
 
 import { useCallback, useRef, useEffect } from 'react';
 import { useSessionStore, type ProviderId } from '../state/sessionStore';
-import { OpenAIRealtimeAdapter } from '../providers/openaiRealtime';
-import { createElevenLabsAdapter } from '../providers/elevenlabsRealtime';
+import { useConnectionPoolStore } from '../state/connectionPoolStore';
 import { requestMicPermission, stopMicStream } from '../audio/mic';
 import { createAudioChunker, type AudioChunker } from '../audio/chunker';
 import type { BaseProviderAdapter } from '../providers/base';
+import { OpenAIRealtimeAdapter } from '../providers/openaiRealtime';
+import { ElevenLabsRealtimeAdapter } from '../providers/elevenlabsRealtime';
 import appConfig from '../data/app_config.json';
+
+// API endpoints for fallback on-demand connections
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const OPENAI_TOKEN_URL = `${API_BASE_URL}/api/token/openai`;
+const ELEVENLABS_TOKEN_URL = `${API_BASE_URL}/api/token/elevenlabs`;
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface TokenResponse {
-  token: string;
-  websocketUrl: string;
-  expiresAt: number;
-}
 
 interface DualSTTHookReturn {
   /** Start recording and streaming to both providers */
@@ -31,46 +37,12 @@ interface DualSTTHookReturn {
   stopRecording: () => void;
   /** Whether recording is currently active */
   isRecording: boolean;
+  /** Whether connection pool is ready */
+  isPoolReady: boolean;
+  /** Whether connection pool is initializing */
+  isPoolInitializing: boolean;
   /** Any errors that occurred */
   error: string | null;
-}
-
-// ============================================================================
-// Token Fetchers
-// ============================================================================
-
-async function fetchOpenAIToken(): Promise<TokenResponse> {
-  const response = await fetch('/api/token/openai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'gpt-4o-realtime-preview-2024-10-01',
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Token request failed' }));
-    throw new Error(error.message || 'Failed to get OpenAI token');
-  }
-
-  return response.json();
-}
-
-async function fetchElevenLabsToken(): Promise<TokenResponse> {
-  const response = await fetch('/api/token/elevenlabs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      duration: 60, // 60 second token
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Token request failed' }));
-    throw new Error(error.message || 'Failed to get ElevenLabs token');
-  }
-
-  return response.json();
 }
 
 // ============================================================================
@@ -92,21 +64,39 @@ export function useDualSTT(): DualSTTHookReturn {
     setRecordingCompleted,
   } = useSessionStore();
 
+  // Connection pool state
+  const poolIsReady = useConnectionPoolStore((state) => state.isReady);
+  const poolIsInitializing = useConnectionPoolStore((state) => state.isInitializing);
+  const poolError = useConnectionPoolStore((state) => state.error);
+  const getAdapter = useConnectionPoolStore((state) => state.getAdapter);
+  const resetAdaptersForNewRecording = useConnectionPoolStore(
+    (state) => state.resetAdaptersForNewRecording
+  );
+
   // Refs for cleanup
-  const openaiAdapterRef = useRef<BaseProviderAdapter | null>(null);
-  const elevenlabsAdapterRef = useRef<BaseProviderAdapter | null>(null);
   const audioChunkerRef = useRef<AudioChunker | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const errorRef = useRef<string | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
+  // Recording cycle ID to track which recording session a timeout belongs to
+  const recordingCycleRef = useRef<number>(0);
+  // Event listener cleanup functions
+  const eventCleanupRef = useRef<(() => void)[]>([]);
+  // Fallback adapters for on-demand connection (when pool isn't ready)
+  const fallbackOpenAIRef = useRef<BaseProviderAdapter | null>(null);
+  const fallbackElevenLabsRef = useRef<BaseProviderAdapter | null>(null);
+  // Track if we're using fallback adapters
+  const usingFallbackRef = useRef<boolean>(false);
 
   // Helper to set up event listeners for a provider
   const setupProviderEvents = useCallback((
     adapter: BaseProviderAdapter,
     providerId: ProviderId
-  ) => {
+  ): (() => void)[] => {
+    const cleanupFns: (() => void)[] = [];
+
     // Connection state changes
-    adapter.on('connection_state_change', (event) => {
+    cleanupFns.push(adapter.on('connection_state_change', (event) => {
       const { currentState } = event.data;
 
       if (currentState === 'connected') {
@@ -114,7 +104,6 @@ export function useDualSTT(): DualSTTHookReturn {
       } else if (currentState === 'error') {
         updateProviderStatus(providerId, 'error');
       } else if (currentState === 'disconnected' || currentState === 'closed') {
-        // Only update if we were still processing
         const result = useSessionStore.getState()[
           providerId === 'openai' ? 'openaiResult' : 'elevenlabsResult'
         ];
@@ -122,24 +111,24 @@ export function useDualSTT(): DualSTTHookReturn {
           updateProviderStatus(providerId, 'error');
         }
       }
-    });
+    }));
 
     // Interim transcript updates
-    adapter.on('transcript_interim', (event) => {
+    cleanupFns.push(adapter.on('transcript_interim', (event) => {
       updateProviderTranscript(providerId, {
         interimText: event.data.text,
       });
-    });
+    }));
 
     // Committed transcript updates
-    adapter.on('transcript_committed', (event) => {
+    cleanupFns.push(adapter.on('transcript_committed', (event) => {
       updateProviderTranscript(providerId, {
         committedText: event.data.text,
       });
-    });
+    }));
 
     // Final transcript
-    adapter.on('transcript_final', (event) => {
+    cleanupFns.push(adapter.on('transcript_final', (event) => {
       const duration = Date.now() - recordingStartTimeRef.current;
 
       updateProviderTranscript(providerId, {
@@ -156,18 +145,20 @@ export function useDualSTT(): DualSTTHookReturn {
 
       // Compute scores
       computeScores(providerId);
-    });
+    }));
 
     // Word timing events
-    adapter.on('word_timing', () => {
+    cleanupFns.push(adapter.on('word_timing', () => {
       const currentWords = adapter.getWordTimings();
       updateProviderWords(providerId, currentWords);
-    });
+    }));
 
     // Error events
-    adapter.on('error', (event) => {
+    cleanupFns.push(adapter.on('error', (event) => {
       setProviderError(providerId, event.data.message);
-    });
+    }));
+
+    return cleanupFns;
   }, [
     updateProviderStatus,
     updateProviderTranscript,
@@ -177,81 +168,207 @@ export function useDualSTT(): DualSTTHookReturn {
     computeScores,
   ]);
 
-  // Start recording
+  // Clean up event listeners
+  const cleanupEventListeners = useCallback(() => {
+    eventCleanupRef.current.forEach(cleanup => cleanup());
+    eventCleanupRef.current = [];
+  }, []);
+
+  // Cleanup function for audio resources
+  const cleanup = useCallback(() => {
+    // Clean up event listeners
+    cleanupEventListeners();
+
+    // Stop audio chunker
+    if (audioChunkerRef.current) {
+      audioChunkerRef.current.stop();
+      audioChunkerRef.current = null;
+    }
+
+    // Stop microphone
+    if (mediaStreamRef.current) {
+      stopMicStream(mediaStreamRef.current);
+      mediaStreamRef.current = null;
+    }
+
+    // Clean up fallback adapters if we created them
+    if (usingFallbackRef.current) {
+      if (fallbackOpenAIRef.current) {
+        try {
+          fallbackOpenAIRef.current.disconnect();
+        } catch (e) {
+          console.error('[useDualSTT] Error disconnecting fallback OpenAI adapter:', e);
+        }
+        fallbackOpenAIRef.current = null;
+      }
+      if (fallbackElevenLabsRef.current) {
+        try {
+          fallbackElevenLabsRef.current.disconnect();
+        } catch (e) {
+          console.error('[useDualSTT] Error disconnecting fallback ElevenLabs adapter:', e);
+        }
+        fallbackElevenLabsRef.current = null;
+      }
+      usingFallbackRef.current = false;
+    }
+  }, [cleanupEventListeners]);
+
+  // Helper to create on-demand adapter connection
+  const createOnDemandAdapters = useCallback(async (): Promise<{
+    openai: BaseProviderAdapter | null;
+    elevenlabs: BaseProviderAdapter | null;
+  }> => {
+    console.log('[useDualSTT] Creating on-demand connections (fallback mode)...');
+
+    let openaiAdapter: BaseProviderAdapter | null = null;
+    let elevenlabsAdapter: BaseProviderAdapter | null = null;
+
+    // Fetch tokens and create adapters in parallel
+    const [openaiResult, elevenlabsResult] = await Promise.allSettled([
+      // OpenAI
+      (async () => {
+        const response = await fetch(OPENAI_TOKEN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`OpenAI token fetch failed: ${response.status}`);
+        const data = await response.json();
+
+        const adapter = new OpenAIRealtimeAdapter();
+        adapter.configure({
+          token: data.token,
+          websocketUrl: data.websocketUrl,
+          model: 'gpt-4o-realtime-preview',
+          language: 'en',
+        });
+        await adapter.connect();
+        return adapter;
+      })(),
+      // ElevenLabs
+      (async () => {
+        const response = await fetch(ELEVENLABS_TOKEN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`ElevenLabs token fetch failed: ${response.status}`);
+        const data = await response.json();
+
+        const adapter = new ElevenLabsRealtimeAdapter();
+        adapter.configure({
+          token: data.token,
+          websocketUrl: data.websocketUrl,
+          language: 'en',
+        });
+        await adapter.connect();
+        return adapter;
+      })(),
+    ]);
+
+    if (openaiResult.status === 'fulfilled') {
+      openaiAdapter = openaiResult.value;
+      console.log('[useDualSTT] OpenAI fallback adapter connected');
+    } else {
+      console.error('[useDualSTT] OpenAI fallback connection failed:', openaiResult.reason);
+    }
+
+    if (elevenlabsResult.status === 'fulfilled') {
+      elevenlabsAdapter = elevenlabsResult.value;
+      console.log('[useDualSTT] ElevenLabs fallback adapter connected');
+    } else {
+      console.error('[useDualSTT] ElevenLabs fallback connection failed:', elevenlabsResult.reason);
+    }
+
+    return { openai: openaiAdapter, elevenlabs: elevenlabsAdapter };
+  }, []);
+
+  // Start recording - uses pool if ready, falls back to on-demand connections
   const startRecording = useCallback(async () => {
     errorRef.current = null;
 
+    // Increment recording cycle ID to invalidate any pending timeouts
+    recordingCycleRef.current += 1;
+    const currentCycle = recordingCycleRef.current;
+
+    // Clean up any existing audio resources
+    cleanup();
+
     try {
-      // Update store state
+      // Update store state FIRST
       storeStartRecording();
       recordingStartTimeRef.current = Date.now();
 
-      // Request microphone permission
+      let openaiAdapter: BaseProviderAdapter | null = null;
+      let elevenlabsAdapter: BaseProviderAdapter | null = null;
+
+      // Try to use pool if ready, otherwise fall back to on-demand
+      if (poolIsReady) {
+        console.log('[useDualSTT] Using pre-connected adapters from pool');
+        usingFallbackRef.current = false;
+
+        // Reset adapters for new recording (clears transcript, keeps connection)
+        resetAdaptersForNewRecording();
+
+        // Get pre-connected adapters from pool (INSTANT!)
+        openaiAdapter = getAdapter('openai');
+        elevenlabsAdapter = getAdapter('elevenlabs');
+      } else {
+        console.log('[useDualSTT] Pool not ready, using fallback on-demand connections');
+        usingFallbackRef.current = true;
+
+        // Create on-demand connections (this has latency but works without pool)
+        const fallbackAdapters = await createOnDemandAdapters();
+        openaiAdapter = fallbackAdapters.openai;
+        elevenlabsAdapter = fallbackAdapters.elevenlabs;
+
+        // Store in refs for cleanup
+        fallbackOpenAIRef.current = openaiAdapter;
+        fallbackElevenLabsRef.current = elevenlabsAdapter;
+      }
+
+      // Check if we have at least one adapter
+      if (!openaiAdapter && !elevenlabsAdapter) {
+        throw new Error('Failed to connect to any STT provider');
+      }
+
+      // Set up event listeners on adapters
+      if (openaiAdapter) {
+        if (openaiAdapter.isConnected()) {
+          const cleanupFns = setupProviderEvents(openaiAdapter, 'openai');
+          eventCleanupRef.current.push(...cleanupFns);
+          updateProviderStatus('openai', 'listening');
+        } else {
+          setProviderError('openai', 'Adapter not connected');
+        }
+      } else {
+        setProviderError('openai', 'No adapter available');
+      }
+
+      if (elevenlabsAdapter) {
+        if (elevenlabsAdapter.isConnected()) {
+          const cleanupFns = setupProviderEvents(elevenlabsAdapter, 'elevenlabs');
+          eventCleanupRef.current.push(...cleanupFns);
+          updateProviderStatus('elevenlabs', 'listening');
+        } else {
+          setProviderError('elevenlabs', 'Adapter not connected');
+        }
+      } else {
+        setProviderError('elevenlabs', 'No adapter available');
+      }
+
+      // Request microphone permission (~50ms if cached)
       const stream = await requestMicPermission();
       mediaStreamRef.current = stream;
 
-      // Fetch tokens in parallel
-      const [openaiToken, elevenlabsToken] = await Promise.allSettled([
-        fetchOpenAIToken(),
-        fetchElevenLabsToken(),
-      ]);
-
-      // Create and configure OpenAI adapter
-      if (openaiToken.status === 'fulfilled') {
-        const adapter = new OpenAIRealtimeAdapter();
-        adapter.configure({
-          websocketUrl: openaiToken.value.websocketUrl,
-          token: openaiToken.value.token,
-          tokenExpiresAt: openaiToken.value.expiresAt,
-          connectTimeoutMs: appConfig.timeouts.connectMs,
-          finalizationTimeoutMs: appConfig.timeouts.finalizationMs,
-          debugLogging: appConfig.featureFlags.debugLogging,
-        });
-        setupProviderEvents(adapter, 'openai');
-        openaiAdapterRef.current = adapter;
-
-        try {
-          await adapter.connect();
-        } catch (e) {
-          setProviderError('openai', e instanceof Error ? e.message : 'Connection failed');
-        }
-      } else {
-        setProviderError('openai', openaiToken.reason?.message || 'Token fetch failed');
-      }
-
-      // Create and configure ElevenLabs adapter
-      if (elevenlabsToken.status === 'fulfilled') {
-        const adapter = createElevenLabsAdapter();
-        adapter.configure({
-          websocketUrl: elevenlabsToken.value.websocketUrl,
-          token: elevenlabsToken.value.token,
-          tokenExpiresAt: elevenlabsToken.value.expiresAt,
-          connectTimeoutMs: appConfig.timeouts.connectMs,
-          finalizationTimeoutMs: appConfig.timeouts.finalizationMs,
-          debugLogging: appConfig.featureFlags.debugLogging,
-        });
-        setupProviderEvents(adapter, 'elevenlabs');
-        elevenlabsAdapterRef.current = adapter;
-
-        try {
-          await adapter.connect();
-        } catch (e) {
-          setProviderError('elevenlabs', e instanceof Error ? e.message : 'Connection failed');
-        }
-      } else {
-        setProviderError('elevenlabs', elevenlabsToken.reason?.message || 'Token fetch failed');
-      }
-
-      // Create audio chunker
+      // Create audio chunker and START IMMEDIATELY
       const chunker = createAudioChunker(
         stream,
         (chunk: ArrayBuffer) => {
-          // Send to both providers
-          if (openaiAdapterRef.current?.isConnected()) {
-            openaiAdapterRef.current.sendAudio(chunk);
+          // Send to adapters
+          if (openaiAdapter?.isConnected()) {
+            openaiAdapter.sendAudio(chunk);
           }
-          if (elevenlabsAdapterRef.current?.isConnected()) {
-            elevenlabsAdapterRef.current.sendAudio(chunk);
+          if (elevenlabsAdapter?.isConnected()) {
+            elevenlabsAdapter.sendAudio(chunk);
           }
         },
         {
@@ -264,26 +381,40 @@ export function useDualSTT(): DualSTTHookReturn {
       audioChunkerRef.current = chunker;
       chunker.start();
 
+      console.log('[useDualSTT] Recording started' + (usingFallbackRef.current ? ' (fallback mode)' : ' (pool mode)'));
+
       // Set up max recording timeout
       const maxDuration = appConfig.timeouts.maxRecordingMs;
       setTimeout(() => {
-        if (useSessionStore.getState().recordingState === 'listening') {
+        if (recordingCycleRef.current === currentCycle &&
+            useSessionStore.getState().recordingState === 'listening') {
           stopRecording();
         }
       }, maxDuration);
 
     } catch (error) {
-      console.error('Failed to start recording:', error);
+      console.error('[useDualSTT] Failed to start recording:', error);
       errorRef.current = error instanceof Error ? error.message : 'Recording failed';
-
-      // Clean up on error
       cleanup();
       storeStopRecording();
     }
-  }, [storeStartRecording, setupProviderEvents, setProviderError]);
+  }, [
+    poolIsReady,
+    storeStartRecording,
+    resetAdaptersForNewRecording,
+    getAdapter,
+    createOnDemandAdapters,
+    setupProviderEvents,
+    updateProviderStatus,
+    setProviderError,
+    cleanup,
+    storeStopRecording,
+  ]);
 
   // Stop recording
   const stopRecording = useCallback(() => {
+    const cycleAtStop = recordingCycleRef.current;
+
     storeStopRecording();
 
     // Stop audio chunker
@@ -298,18 +429,27 @@ export function useDualSTT(): DualSTTHookReturn {
       mediaStreamRef.current = null;
     }
 
-    // Signal end of audio to providers
-    if (openaiAdapterRef.current?.isConnected()) {
-      openaiAdapterRef.current.endAudio();
+    // Get adapters from pool and signal end of audio
+    const openaiAdapter = getAdapter('openai');
+    const elevenlabsAdapter = getAdapter('elevenlabs');
+
+    if (openaiAdapter?.isConnected()) {
+      openaiAdapter.endAudio();
     }
-    if (elevenlabsAdapterRef.current?.isConnected()) {
-      elevenlabsAdapterRef.current.endAudio();
+    if (elevenlabsAdapter?.isConnected()) {
+      elevenlabsAdapter.endAudio();
     }
 
     // Wait for finalization or timeout
     const finalizationTimeout = appConfig.timeouts.finalizationMs;
 
     setTimeout(() => {
+      // Check if this timeout is still for the current recording cycle
+      if (recordingCycleRef.current !== cycleAtStop) {
+        console.log('[useDualSTT] Ignoring stale finalization timeout');
+        return;
+      }
+
       const state = useSessionStore.getState();
 
       // If providers haven't completed, force completion with last known transcript
@@ -336,31 +476,18 @@ export function useDualSTT(): DualSTTHookReturn {
       // Ensure recording state is completed
       setRecordingCompleted();
 
-      // Clean up adapters
-      cleanup();
+      // Clean up event listeners (but NOT adapters - pool keeps them for reuse)
+      cleanupEventListeners();
+
     }, finalizationTimeout);
 
-  }, [storeStopRecording, computeScores, setRecordingCompleted]);
-
-  // Cleanup function
-  const cleanup = useCallback(() => {
-    if (openaiAdapterRef.current) {
-      openaiAdapterRef.current.dispose();
-      openaiAdapterRef.current = null;
-    }
-    if (elevenlabsAdapterRef.current) {
-      elevenlabsAdapterRef.current.dispose();
-      elevenlabsAdapterRef.current = null;
-    }
-    if (audioChunkerRef.current) {
-      audioChunkerRef.current.stop();
-      audioChunkerRef.current = null;
-    }
-    if (mediaStreamRef.current) {
-      stopMicStream(mediaStreamRef.current);
-      mediaStreamRef.current = null;
-    }
-  }, []);
+  }, [
+    storeStopRecording,
+    getAdapter,
+    computeScores,
+    setRecordingCompleted,
+    cleanupEventListeners,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -373,7 +500,9 @@ export function useDualSTT(): DualSTTHookReturn {
     startRecording,
     stopRecording,
     isRecording: recordingState === 'listening',
-    error: errorRef.current,
+    isPoolReady: poolIsReady,
+    isPoolInitializing: poolIsInitializing,
+    error: errorRef.current || poolError,
   };
 }
 

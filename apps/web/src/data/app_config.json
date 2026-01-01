@@ -2,9 +2,9 @@
   "receiverCallsignDefault": "ATC",
   "acceptedReceiverTokens": ["atc", "ground", "tower", "approach", "departure"],
   "scoringWeights": {
-    "clarity": 0.40,
-    "pace": 0.30,
-    "structure": 0.30
+    "accuracy": 0.50,
+    "fluency": 0.30,
+    "structure": 0.20
   },
   "paceConfig": {
     "idealWpmMin": 120,
@@ -26,8 +26,14 @@
   "featureFlags": {
     "realtimeMode": "direct",
     "enableProxyFallback": true,
-    "debugLogging": false,
+    "debugLogging": true,
     "lockSelectionDuringRecording": true,
     "allowSkipScoring": false
+  },
+  "connectionPool": {
+    "tokenRefreshBufferMs": 60000,
+    "idleTimeoutMs": 300000,
+    "maxReconnectAttempts": 3,
+    "reconnectDelayMs": 1000
   }
 }

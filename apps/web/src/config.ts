@@ -9,10 +9,13 @@ import appConfigJson from '@data/app_config.json';
 
 /**
  * Scoring weights for R/T performance evaluation
+ * - Accuracy (50%): Pure text similarity
+ * - Fluency (30%): Clean speech without fillers
+ * - Structure (20%): Radio protocol adherence
  */
 export interface ScoringWeights {
-  clarity: number;
-  pace: number;
+  accuracy: number;
+  fluency: number;
   structure: number;
 }
 

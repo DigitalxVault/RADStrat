@@ -107,7 +107,34 @@ export interface FillerCount {
 // ============================================================================
 
 /**
- * Clarity scoring breakdown
+ * Accuracy scoring breakdown
+ * Pure text similarity - did they say the right words?
+ */
+export interface AccuracyBreakdown {
+  /** Similarity score (0-1) between transcript and expected */
+  similarityScore: number;
+  /** Normalized transcript text */
+  normalizedTranscript: string;
+  /** Normalized expected text */
+  normalizedExpected: string;
+}
+
+/**
+ * Fluency scoring breakdown
+ * Clean speech - no filler words like "um", "uh", "like"
+ */
+export interface FluencyBreakdown {
+  /** Penalty applied for filler words (0-50) */
+  fillerPenalty: number;
+  /** Detected filler words with counts */
+  fillers: FillerCount[];
+  /** Total number of filler words detected */
+  totalFillers: number;
+}
+
+/**
+ * @deprecated Use AccuracyBreakdown instead
+ * Clarity scoring breakdown (legacy)
  */
 export interface ClarityBreakdown {
   /** Similarity score (0-1) */
@@ -123,7 +150,8 @@ export interface ClarityBreakdown {
 }
 
 /**
- * Pace scoring breakdown
+ * @deprecated No longer used in scoring
+ * Pace scoring breakdown (legacy)
  */
 export interface PaceBreakdown {
   /** Words per minute */
@@ -174,8 +202,8 @@ export interface StructureBreakdown {
  * Complete scoring breakdown with all metrics
  */
 export interface ScoringBreakdown {
-  clarity: ClarityBreakdown;
-  pace: PaceBreakdown;
+  accuracy: AccuracyBreakdown;
+  fluency: FluencyBreakdown;
   structure: StructureBreakdown;
 }
 
@@ -211,13 +239,13 @@ export interface ProviderCost {
  * Provider scoring metrics
  */
 export interface ProviderMetrics {
-  /** Clarity score (0-100) */
-  clarity: number;
-  /** Pace score (0-100) */
-  pace: number;
-  /** Structure score (0-100) */
+  /** Accuracy score (0-100) - text similarity */
+  accuracy: number;
+  /** Fluency score (0-100) - clean speech without fillers */
+  fluency: number;
+  /** Structure score (0-100) - radio protocol adherence */
   structure: number;
-  /** Overall score (0-100) */
+  /** Overall score (0-100) - weighted combination */
   overall: number;
 }
 
@@ -402,4 +430,51 @@ export interface ElevenLabsTokenResponse {
   expiresAt: number;
   /** WebSocket URL for realtime connection */
   websocketUrl: string;
+}
+
+// ============================================================================
+// Test Mode Types
+// ============================================================================
+
+/**
+ * Test mode for the application
+ * - read-aloud: User selects MCQ choice and reads the expected answer
+ * - open-ended: User speaks their own response to the scenario
+ */
+export type TestMode = "read-aloud" | "open-ended";
+
+/**
+ * OpenAI Chat API scoring result for open-ended mode
+ */
+export interface OpenAIScoreResult {
+  /** Accuracy score (0-100) - how well response matches expected content */
+  accuracy: number;
+  /** Fluency score (0-100) - clean speech without filler words */
+  fluency: number;
+  /** Structure score (0-100) - radio protocol adherence */
+  structure: number;
+  /** Overall score (0-100) - weighted combination */
+  overall: number;
+  /** AI-generated feedback on the response */
+  feedback: string;
+  /** List of filler words detected */
+  fillerWords: string[];
+  /** Total count of filler words */
+  fillerCount: number;
+  /** Specific feedback on radio protocol adherence */
+  radioProtocolNotes?: string;
+}
+
+/**
+ * Request payload for OpenAI Chat scoring
+ */
+export interface OpenAIScoreRequest {
+  /** User's transcript */
+  transcript: string;
+  /** Expected answer from question bank */
+  expectedAnswer: string;
+  /** Scenario/question prompt */
+  scenarioPrompt: string;
+  /** Structure mode for the question */
+  structureMode: StructureMode;
 }

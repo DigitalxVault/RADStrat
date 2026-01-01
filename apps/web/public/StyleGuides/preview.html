@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI R/T Trainer - Style Guide Preview</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ========== CSS DESIGN TOKENS ========== */
+        :root {
+            /* Base Colors */
+            --slate-900: #0F172A;
+            --slate-800: #1E293B;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748B;
+            --slate-400: #94A3B8;
+            --slate-300: #CBD5E1;
+            --slate-200: #E2E8F0;
+            --slate-100: #F1F5F9;
+            --charcoal: #18181B;
+
+            /* Accent Colors */
+            --amber-warning: #F59E0B;
+            --amber-light: #FCD34D;
+            --cyan-info: #06B6D4;
+            --cyan-light: #67E8F9;
+            --green-success: #22C55E;
+            --green-light: #86EFAC;
+            --red-critical: #EF4444;
+            --red-light: #FCA5A5;
+
+            /* Role Colors */
+            --role-bowser: #3D5A3D;
+            --role-security: #2D2D4A;
+            --role-afe: #4A4A2D;
+            --role-contractor: #4A4A4A;
+            --role-fire: #5A2D2D;
+
+            /* Typography */
+            --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+
+            /* Spacing */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+            --space-8: 32px;
+
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+
+            /* Transitions */
+            --transition-fast: 0.1s ease-out;
+            --transition-normal: 0.2s ease-out;
+            --transition-slow: 0.3s ease-out;
+        }
+
+        /* ========== BASE STYLES ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-primary);
+            background: var(--slate-900);
+            color: var(--slate-200);
+            line-height: 1.5;
+        }
+
+        /* ========== LAYOUT ========== */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: var(--charcoal);
+            border-right: 1px solid var(--slate-700);
+            padding: var(--space-4);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .main {
+            flex: 1;
+            margin-left: 240px;
+            padding: var(--space-8);
+        }
+
+        /* ========== NAVIGATION ========== */
+        .nav-header {
+            padding: var(--space-4) 0;
+            border-bottom: 1px solid var(--slate-700);
+            margin-bottom: var(--space-4);
+        }
+
+        .nav-logo {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--cyan-info);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-title {
+            font-size: 12px;
+            color: var(--slate-400);
+            margin-top: var(--space-1);
+        }
+
+        .nav-section {
+            margin-bottom: var(--space-4);
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--slate-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-2);
+        }
+
+        .nav-link {
+            display: block;
+            padding: var(--space-2) var(--space-3);
+            color: var(--slate-400);
+            text-decoration: none;
+            font-size: 14px;
+            border-radius: var(--radius-md);
+            transition: var(--transition-fast);
+        }
+
+        .nav-link:hover {
+            background: var(--slate-800);
+            color: var(--slate-200);
+        }
+
+        .nav-link.active {
+            background: var(--slate-700);
+            color: var(--cyan-info);
+        }
+
+        /* ========== SECTIONS ========== */
+        .section {
+            margin-bottom: var(--space-8);
+            padding-bottom: var(--space-8);
+            border-bottom: 1px solid var(--slate-700);
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: var(--space-2);
+        }
+
+        .section-subtitle {
+            font-size: 16px;
+            color: var(--slate-400);
+            margin-bottom: var(--space-6);
+        }
+
+        .subsection {
+            margin-bottom: var(--space-6);
+        }
+
+        .subsection-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--space-4);
+            color: var(--slate-300);
+        }
+
+        /* ========== COLOR SWATCHES ========== */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .color-swatch {
+            background: var(--slate-800);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .color-preview {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+
+        .color-info {
+            padding: var(--space-3);
+        }
+
+        .color-name {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: var(--space-1);
+        }
+
+        .color-hex {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--slate-400);
+        }
+
+        /* ========== TYPOGRAPHY SAMPLES ========== */
+        .type-sample {
+            background: var(--slate-800);
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-3);
+        }
+
+        .type-label {
+            font-size: 11px;
+            color: var(--slate-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-2);
+        }
+
+        .type-display-xl { font-size: 48px; font-weight: 700; line-height: 1.1; }
+        .type-display-l { font-size: 36px; font-weight: 700; line-height: 1.2; }
+        .type-h1 { font-size: 28px; font-weight: 600; line-height: 1.3; }
+        .type-h2 { font-size: 24px; font-weight: 600; line-height: 1.3; }
+        .type-h3 { font-size: 20px; font-weight: 600; line-height: 1.4; }
+        .type-body-l { font-size: 18px; line-height: 1.5; }
+        .type-body-m { font-size: 16px; line-height: 1.5; }
+        .type-body-s { font-size: 14px; line-height: 1.5; color: var(--slate-400); }
+        .type-caption { font-size: 12px; line-height: 1.4; color: var(--slate-400); }
+        .type-mono { font-family: var(--font-mono); font-size: 16px; line-height: 1.6; }
+        .type-callsign { font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--cyan-info); }
+
+        /* ========== BUTTONS ========== */
+        .button-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-4);
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            padding: 12px 20px;
+            font-family: var(--font-primary);
+            font-size: 16px;
+            font-weight: 500;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .btn-primary {
+            background: var(--cyan-info);
+            color: var(--slate-900);
+        }
+
+        .btn-primary:hover {
+            background: var(--cyan-light);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--slate-200);
+            border: 1px solid var(--slate-600);
+        }
+
+        .btn-secondary:hover {
+            background: var(--slate-700);
+            border-color: var(--slate-500);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--slate-400);
+        }
+
+        .btn-ghost:hover {
+            color: var(--slate-200);
+        }
+
+        .btn-success {
+            background: var(--green-success);
+            color: var(--slate-900);
+        }
+
+        .btn-warning {
+            background: var(--amber-warning);
+            color: var(--slate-900);
+        }
+
+        .btn-danger {
+            background: var(--red-critical);
+            color: white;
+        }
+
+        .btn:disabled {
+            background: var(--slate-600);
+            color: var(--slate-400);
+            cursor: not-allowed;
+        }
+
+        .btn-sm { padding: 8px 16px; font-size: 14px; }
+        .btn-lg { padding: 16px 24px; font-size: 18px; }
+
+        /* ========== CARDS ========== */
+        .card {
+            background: var(--slate-800);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+        }
+
+        .card-elevated {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-bordered {
+            border: 1px solid var(--slate-600);
+        }
+
+        /* ========== COMPONENT DEMOS ========== */
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-6);
+        }
+
+        .demo-card {
+            background: var(--slate-800);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .demo-header {
+            background: var(--slate-700);
+            padding: var(--space-3) var(--space-4);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--slate-300);
+        }
+
+        .demo-content {
+            padding: var(--space-4);
+        }
+
+        /* ========== QUESTION CARD COMPONENT ========== */
+        .question-card {
+            background: var(--slate-700);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+        }
+
+        .question-audio-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-3);
+            background: var(--slate-600);
+            border-radius: var(--radius-md);
+            color: var(--cyan-info);
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: var(--space-4);
+        }
+
+        .question-label {
+            font-size: 12px;
+            color: var(--slate-400);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-2);
+        }
+
+        .question-text {
+            font-size: 18px;
+            margin-bottom: var(--space-4);
+        }
+
+        .atc-quote {
+            background: var(--slate-800);
+            border-left: 3px solid var(--amber-warning);
+            padding: var(--space-3) var(--space-4);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            font-family: var(--font-mono);
+            color: var(--slate-300);
+            margin-bottom: var(--space-4);
+        }
+
+        /* ========== OPTIONS LIST COMPONENT ========== */
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        .option-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            background: var(--slate-700);
+            border: 1px solid var(--slate-600);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .option-item:hover {
+            background: var(--slate-600);
+            border-color: var(--slate-500);
+        }
+
+        .option-item.selected {
+            border-color: var(--cyan-info);
+            border-width: 2px;
+        }
+
+        .option-item.correct {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: var(--green-success);
+        }
+
+        .option-item.incorrect {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: var(--red-critical);
+        }
+
+        .option-letter {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--slate-600);
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .option-item.selected .option-letter {
+            background: var(--cyan-info);
+            color: var(--slate-900);
+        }
+
+        .option-item.correct .option-letter {
+            background: var(--green-success);
+            color: var(--slate-900);
+        }
+
+        .option-item.incorrect .option-letter {
+            background: var(--red-critical);
+            color: white;
+        }
+
+        .option-text {
+            font-size: 15px;
+            padding-top: 3px;
+        }
+
+        /* ========== MIC BUTTON COMPONENT ========== */
+        .mic-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .mic-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-normal);
+            position: relative;
+        }
+
+        .mic-button.idle {
+            background: var(--slate-700);
+            color: var(--slate-300);
+        }
+
+        .mic-button.listening {
+            background: var(--cyan-info);
+            color: var(--slate-900);
+            animation: pulse 1s ease-in-out infinite;
+            box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.5);
+        }
+
+        .mic-button.processing {
+            background: var(--cyan-info);
+            color: var(--slate-900);
+        }
+
+        .mic-button.processing .mic-icon {
+            animation: spin 1s linear infinite;
+        }
+
+        .mic-button.success {
+            background: var(--green-success);
+            color: var(--slate-900);
+            animation: pop 0.3s ease-out;
+        }
+
+        .mic-button.fail {
+            background: var(--red-critical);
+            color: white;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .mic-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .mic-label {
+            font-size: 14px;
+            color: var(--slate-400);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.5); transform: scale(1); }
+            50% { box-shadow: 0 0 20px 10px rgba(6, 182, 212, 0.3); transform: scale(1.05); }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        /* ========== QUALITY MATRIX COMPONENT ========== */
+        .quality-matrix {
+            background: var(--slate-700);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+        }
+
+        .quality-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--slate-300);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-4);
+        }
+
+        .quality-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-3);
+        }
+
+        .quality-label {
+            width: 80px;
+            font-size: 14px;
+            color: var(--slate-400);
+        }
+
+        .quality-bar-bg {
+            flex: 1;
+            height: 8px;
+            background: var(--slate-600);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .quality-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+        }
+
+        .quality-value {
+            width: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* ========== RADIO LOG COMPONENT ========== */
+        .radio-log {
+            background: var(--slate-700);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .radio-log-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--slate-300);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-3);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid var(--slate-600);
+        }
+
+        .radio-message {
+            display: flex;
+            gap: var(--space-3);
+            margin-bottom: var(--space-3);
+            font-size: 14px;
+        }
+
+        .radio-time {
+            color: var(--slate-500);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .radio-sender {
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .radio-sender.gnd { background: var(--amber-warning); color: var(--slate-900); }
+        .radio-sender.you { background: var(--green-success); color: var(--slate-900); }
+        .radio-sender.twr { background: var(--cyan-info); color: var(--slate-900); }
+
+        .radio-text {
+            font-family: var(--font-mono);
+            color: var(--slate-300);
+        }
+
+        /* ========== LIVE TRANSCRIPT COMPONENT ========== */
+        .live-transcript {
+            background: var(--slate-700);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+        }
+
+        .transcript-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--slate-300);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-3);
+        }
+
+        .transcript-text {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            color: var(--slate-200);
+            min-height: 60px;
+            padding: var(--space-3);
+            background: var(--slate-800);
+            border-radius: var(--radius-md);
+        }
+
+        .transcript-status {
+            margin-top: var(--space-3);
+            font-size: 13px;
+            color: var(--cyan-info);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .listening-dots::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* ========== BADGES ========== */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-role {
+            padding: var(--space-2) var(--space-3);
+        }
+
+        .badge-bowser { background: var(--role-bowser); }
+        .badge-security { background: var(--role-security); }
+        .badge-afe { background: var(--role-afe); }
+        .badge-contractor { background: var(--role-contractor); }
+        .badge-fire { background: var(--role-fire); }
+
+        /* ========== PROGRESS INDICATOR ========== */
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .progress-bar-bg {
+            flex: 1;
+            height: 8px;
+            background: var(--slate-600);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--cyan-info);
+            border-radius: 4px;
+            transition: width 0.3s ease-out;
+        }
+
+        .progress-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--slate-300);
+        }
+
+        /* ========== TIMER ========== */
+        .timer {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-family: var(--font-mono);
+            font-size: 16px;
+        }
+
+        .timer.warning { color: var(--amber-warning); }
+        .timer.critical { color: var(--red-critical); animation: pulse-text 0.5s infinite; }
+
+        @keyframes pulse-text {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ========== SCREEN PREVIEW ========== */
+        .screen-preview {
+            background: var(--charcoal);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--slate-700);
+        }
+
+        .screen-topbar {
+            background: var(--slate-800);
+            padding: var(--space-3) var(--space-4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--slate-700);
+        }
+
+        .screen-topbar-left {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .screen-back {
+            color: var(--slate-400);
+            cursor: pointer;
+        }
+
+        .screen-title {
+            font-weight: 600;
+        }
+
+        .screen-topbar-right {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            color: var(--slate-400);
+            font-size: 14px;
+        }
+
+        .screen-body {
+            padding: var(--space-6);
+        }
+
+        /* ========== VOICE MCQ SCREEN LAYOUT ========== */
+        .voice-mcq-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-6);
+        }
+
+        /* ========== DEBRIEF MODAL ========== */
+        .debrief-modal {
+            background: var(--slate-800);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .debrief-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: var(--space-6);
+            text-align: center;
+        }
+
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-4);
+        }
+
+        .score-circle.excellent { background: rgba(34, 197, 94, 0.2); border: 3px solid var(--green-success); }
+        .score-circle.good { background: rgba(6, 182, 212, 0.2); border: 3px solid var(--cyan-info); }
+        .score-circle.fair { background: rgba(245, 158, 11, 0.2); border: 3px solid var(--amber-warning); }
+        .score-circle.needs-work { background: rgba(239, 68, 68, 0.2); border: 3px solid var(--red-critical); }
+
+        .score-value {
+            font-size: 36px;
+            font-weight: 700;
+        }
+
+        .score-grade {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .debrief-divider {
+            height: 1px;
+            background: var(--slate-600);
+            margin: var(--space-5) 0;
+        }
+
+        .debrief-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--slate-400);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-3);
+        }
+
+        .improvement-list {
+            list-style: none;
+        }
+
+        .improvement-list li {
+            padding: var(--space-2) 0;
+            padding-left: var(--space-4);
+            position: relative;
+            color: var(--slate-300);
+        }
+
+        .improvement-list li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--amber-warning);
+        }
+
+        .ideal-response {
+            background: var(--slate-700);
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            color: var(--green-light);
+        }
+
+        .debrief-actions {
+            display: flex;
+            gap: var(--space-3);
+            margin-top: var(--space-6);
+        }
+
+        .debrief-actions .btn {
+            flex: 1;
+        }
+
+        /* ========== UTILITIES ========== */
+        .text-cyan { color: var(--cyan-info); }
+        .text-green { color: var(--green-success); }
+        .text-amber { color: var(--amber-warning); }
+        .text-red { color: var(--red-critical); }
+        .text-muted { color: var(--slate-400); }
+
+        .mt-4 { margin-top: var(--space-4); }
+        .mb-4 { margin-bottom: var(--space-4); }
+        .mb-6 { margin-bottom: var(--space-6); }
+
+        /* Icon placeholders */
+        .icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="nav-header">
+                <div class="nav-logo">R/T Trainer</div>
+                <div class="nav-title">Style Guide Preview</div>
+                <a href="/" class="back-to-app-link" style="display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 8px 12px; background: var(--slate-700); color: var(--cyan-light); border-radius: var(--radius-md); text-decoration: none; font-size: 13px; font-weight: 500; transition: background 0.15s ease;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back to App
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Foundations</div>
+                <a href="#colors" class="nav-link active">Colors</a>
+                <a href="#typography" class="nav-link">Typography</a>
+                <a href="#spacing" class="nav-link">Spacing & Radius</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Components</div>
+                <a href="#buttons" class="nav-link">Buttons</a>
+                <a href="#badges" class="nav-link">Badges</a>
+                <a href="#question-card" class="nav-link">Question Card</a>
+                <a href="#options-list" class="nav-link">Options List</a>
+                <a href="#mic-button" class="nav-link">Mic Button</a>
+                <a href="#quality-matrix" class="nav-link">Quality Matrix</a>
+                <a href="#radio-log" class="nav-link">Radio Log</a>
+                <a href="#transcript" class="nav-link">Live Transcript</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Screens</div>
+                <a href="#voice-mcq" class="nav-link">Voice MCQ</a>
+                <a href="#debrief" class="nav-link">Debrief Modal</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Colors Section -->
+            <section id="colors" class="section">
+                <h1 class="section-title">Color System</h1>
+                <p class="section-subtitle">Base palette and functional accent colors</p>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">Base Palette (Slate)</h3>
+                    <div class="color-grid">
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--slate-900); color: var(--slate-200);">Aa</div>
+                            <div class="color-info">
+                                <div class="color-name">Slate 900</div>
+                                <div class="color-hex">#0F172A</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--slate-800); color: var(--slate-200);">Aa</div>
+                            <div class="color-info">
+                                <div class="color-name">Slate 800</div>
+                                <div class="color-hex">#1E293B</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--slate-700); color: var(--slate-200);">Aa</div>
+                            <div class="color-info">
+                                <div class="color-name">Slate 700</div>
+                                <div class="color-hex">#334155</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--slate-600); color: var(--slate-200);">Aa</div>
+                            <div class="color-info">
+                                <div class="color-name">Slate 600</div>
+                                <div class="color-hex">#475569</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--slate-400); color: var(--slate-900);">Aa</div>
+                            <div class="color-info">
+                                <div class="color-name">Slate 400</div>
+                                <div class="color-hex">#94A3B8</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--slate-200); color: var(--slate-900);">Aa</div>
+                            <div class="color-info">
+                                <div class="color-name">Slate 200</div>
+                                <div class="color-hex">#E2E8F0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">Accent Colors (Functional)</h3>
+                    <div class="color-grid">
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--cyan-info); color: var(--slate-900);">Info</div>
+                            <div class="color-info">
+                                <div class="color-name">Cyan Info</div>
+                                <div class="color-hex">#06B6D4</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--green-success); color: var(--slate-900);">Success</div>
+                            <div class="color-info">
+                                <div class="color-name">Green Success</div>
+                                <div class="color-hex">#22C55E</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--amber-warning); color: var(--slate-900);">Warning</div>
+                            <div class="color-info">
+                                <div class="color-name">Amber Warning</div>
+                                <div class="color-hex">#F59E0B</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--red-critical); color: white;">Critical</div>
+                            <div class="color-info">
+                                <div class="color-name">Red Critical</div>
+                                <div class="color-hex">#EF4444</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">Role Colors</h3>
+                    <div class="color-grid">
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--role-bowser);">Bowser</div>
+                            <div class="color-info">
+                                <div class="color-name">Bowser</div>
+                                <div class="color-hex">#3D5A3D</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--role-security);">Security</div>
+                            <div class="color-info">
+                                <div class="color-name">Security</div>
+                                <div class="color-hex">#2D2D4A</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--role-afe);">AFE</div>
+                            <div class="color-info">
+                                <div class="color-name">AFE</div>
+                                <div class="color-hex">#4A4A2D</div>
+                            </div>
+                        </div>
+                        <div class="color-swatch">
+                            <div class="color-preview" style="background: var(--role-fire);">Fire</div>
+                            <div class="color-info">
+                                <div class="color-name">Fire Tender</div>
+                                <div class="color-hex">#5A2D2D</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Typography Section -->
+            <section id="typography" class="section">
+                <h1 class="section-title">Typography</h1>
+                <p class="section-subtitle">Inter for UI, JetBrains Mono for R/T content</p>
+
+                <div class="type-sample">
+                    <div class="type-label">Display XL - 48px Bold</div>
+                    <div class="type-display-xl">R/T Training</div>
+                </div>
+
+                <div class="type-sample">
+                    <div class="type-label">Display L - 36px Bold</div>
+                    <div class="type-display-l">Session Complete</div>
+                </div>
+
+                <div class="type-sample">
+                    <div class="type-label">Heading 1 - 28px SemiBold</div>
+                    <div class="type-h1">Voice Recognition Mode</div>
+                </div>
+
+                <div class="type-sample">
+                    <div class="type-label">Heading 2 - 24px SemiBold</div>
+                    <div class="type-h2">Quality Matrix</div>
+                </div>
+
+                <div class="type-sample">
+                    <div class="type-label">Body Large - 18px Regular</div>
+                    <div class="type-body-l">Ground Controller says: "Hotel 70, hold position. Standby."</div>
+                </div>
+
+                <div class="type-sample">
+                    <div class="type-label">Body Medium - 16px Regular</div>
+                    <div class="type-body-m">Select the correct response and speak it exactly as shown.</div>
+                </div>
+
+                <div class="type-sample">
+                    <div class="type-label">Mono (R/T Transcript) - 16px JetBrains Mono</div>
+                    <div class="type-mono">"Hotel 70, taxi via Alpha, hold short Runway 02."</div>
+                </div>
+
+                <div class="type-sample">
+                    <div class="type-label">Callsign - 16px JetBrains Mono Bold Cyan</div>
+                    <div class="type-callsign">HOTEL 70</div>
+                </div>
+            </section>
+
+            <!-- Buttons Section -->
+            <section id="buttons" class="section">
+                <h1 class="section-title">Buttons</h1>
+                <p class="section-subtitle">Primary, secondary, and state variants</p>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">Button Variants</h3>
+                    <div class="button-grid">
+                        <button class="btn btn-primary">Primary</button>
+                        <button class="btn btn-secondary">Secondary</button>
+                        <button class="btn btn-ghost">Ghost</button>
+                        <button class="btn btn-primary" disabled>Disabled</button>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">Semantic Buttons</h3>
+                    <div class="button-grid">
+                        <button class="btn btn-success">Success</button>
+                        <button class="btn btn-warning">Warning</button>
+                        <button class="btn btn-danger">Danger</button>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h3 class="subsection-title">Button Sizes</h3>
+                    <div class="button-grid">
+                        <button class="btn btn-primary btn-sm">Small</button>
+                        <button class="btn btn-primary">Medium</button>
+                        <button class="btn btn-primary btn-lg">Large</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Badges Section -->
+            <section id="badges" class="section">
+                <h1 class="section-title">Badges</h1>
+                <p class="section-subtitle">Role indicators and status badges</p>
+
+                <div class="button-grid">
+                    <span class="badge badge-role badge-bowser">🚛 Bowser</span>
+                    <span class="badge badge-role badge-security">🛡️ Security</span>
+                    <span class="badge badge-role badge-afe">🔧 AFE</span>
+                    <span class="badge badge-role badge-contractor">🏗️ Contractor</span>
+                    <span class="badge badge-role badge-fire">🚒 Fire Tender</span>
+                </div>
+            </section>
+
+            <!-- Question Card Section -->
+            <section id="question-card" class="section">
+                <h1 class="section-title">Question Card</h1>
+                <p class="section-subtitle">Displays question context and ATC instruction</p>
+
+                <div class="question-card">
+                    <div class="question-audio-btn">🔊 Play Audio</div>
+                    <div class="question-label">Question</div>
+                    <div class="question-text">Ground Controller says:</div>
+                    <div class="atc-quote">"Hotel 70, taxi via Alpha, hold short Runway 02."</div>
+                    <div class="question-text">What is the correct response?</div>
+                </div>
+            </section>
+
+            <!-- Options List Section -->
+            <section id="options-list" class="section">
+                <h1 class="section-title">Options List</h1>
+                <p class="section-subtitle">MCQ options with selection and result states</p>
+
+                <div class="demo-grid">
+                    <div class="demo-card">
+                        <div class="demo-header">Default State</div>
+                        <div class="demo-content">
+                            <div class="options-list">
+                                <div class="option-item">
+                                    <span class="option-letter">A</span>
+                                    <span class="option-text">Hotel 70, taxi via Alpha, hold short Runway 02.</span>
+                                </div>
+                                <div class="option-item">
+                                    <span class="option-letter">B</span>
+                                    <span class="option-text">Copy, taxiing.</span>
+                                </div>
+                                <div class="option-item">
+                                    <span class="option-letter">C</span>
+                                    <span class="option-text">Roger, Alpha to Runway 02.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="demo-card">
+                        <div class="demo-header">Selected + Result States</div>
+                        <div class="demo-content">
+                            <div class="options-list">
+                                <div class="option-item correct">
+                                    <span class="option-letter">A</span>
+                                    <span class="option-text">Hotel 70, taxi via Alpha, hold short Runway 02. ✓</span>
+                                </div>
+                                <div class="option-item incorrect">
+                                    <span class="option-letter">B</span>
+                                    <span class="option-text">Copy, taxiing. ✗</span>
+                                </div>
+                                <div class="option-item selected">
+                                    <span class="option-letter">C</span>
+                                    <span class="option-text">Roger, Alpha to Runway 02. (Selected)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mic Button Section -->
+            <section id="mic-button" class="section">
+                <h1 class="section-title">Mic Button</h1>
+                <p class="section-subtitle">Voice input control with animated states</p>
+
+                <div class="demo-grid">
+                    <div class="demo-card">
+                        <div class="demo-header">Idle</div>
+                        <div class="demo-content">
+                            <div class="mic-container">
+                                <button class="mic-button idle">
+                                    <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                        <line x1="12" y1="19" x2="12" y2="23"/>
+                                        <line x1="8" y1="23" x2="16" y2="23"/>
+                                    </svg>
+                                </button>
+                                <span class="mic-label">Tap to Speak</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="demo-card">
+                        <div class="demo-header">Listening</div>
+                        <div class="demo-content">
+                            <div class="mic-container">
+                                <button class="mic-button listening">
+                                    <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                        <line x1="12" y1="19" x2="12" y2="23"/>
+                                        <line x1="8" y1="23" x2="16" y2="23"/>
+                                    </svg>
+                                </button>
+                                <span class="mic-label text-cyan">Listening...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="demo-card">
+                        <div class="demo-header">Success</div>
+                        <div class="demo-content">
+                            <div class="mic-container">
+                                <button class="mic-button success">
+                                    <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                </button>
+                                <span class="mic-label text-green">Got it!</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="demo-card">
+                        <div class="demo-header">Failed</div>
+                        <div class="demo-content">
+                            <div class="mic-container">
+                                <button class="mic-button fail">
+                                    <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
+                                </button>
+                                <span class="mic-label text-red">Try Again</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quality Matrix Section -->
+            <section id="quality-matrix" class="section">
+                <h1 class="section-title">Quality Matrix Panel</h1>
+                <p class="section-subtitle">Voice evaluation scores display</p>
+
+                <div style="max-width: 400px;">
+                    <div class="quality-matrix">
+                        <div class="quality-title">Quality Matrix</div>
+                        <div class="quality-row">
+                            <span class="quality-label">Clarity</span>
+                            <div class="quality-bar-bg">
+                                <div class="quality-bar" style="width: 85%; background: var(--cyan-info);"></div>
+                            </div>
+                            <span class="quality-value text-cyan">85%</span>
+                        </div>
+                        <div class="quality-row">
+                            <span class="quality-label">Pace</span>
+                            <div class="quality-bar-bg">
+                                <div class="quality-bar" style="width: 70%; background: var(--cyan-info);"></div>
+                            </div>
+                            <span class="quality-value text-cyan">70%</span>
+                        </div>
+                        <div class="quality-row">
+                            <span class="quality-label">Structure</span>
+                            <div class="quality-bar-bg">
+                                <div class="quality-bar" style="width: 55%; background: var(--amber-warning);"></div>
+                            </div>
+                            <span class="quality-value text-amber">55%</span>
+                        </div>
+                        <div class="quality-row">
+                            <span class="quality-label">Callsign</span>
+                            <div class="quality-bar-bg">
+                                <div class="quality-bar" style="width: 100%; background: var(--green-success);"></div>
+                            </div>
+                            <span class="quality-value text-green">100%</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Radio Log Section -->
+            <section id="radio-log" class="section">
+                <h1 class="section-title">Radio Log Panel</h1>
+                <p class="section-subtitle">Scrollable R/T communication history</p>
+
+                <div style="max-width: 500px;">
+                    <div class="radio-log">
+                        <div class="radio-log-title">Radio Log</div>
+                        <div class="radio-message">
+                            <span class="radio-time">10:23</span>
+                            <span class="radio-sender gnd">GND</span>
+                            <span class="radio-text">Hotel 70, hold position. Standby.</span>
+                        </div>
+                        <div class="radio-message">
+                            <span class="radio-time">10:24</span>
+                            <span class="radio-sender you">YOU</span>
+                            <span class="radio-text">Hotel 70, holding position.</span>
+                        </div>
+                        <div class="radio-message">
+                            <span class="radio-time">10:25</span>
+                            <span class="radio-sender gnd">GND</span>
+                            <span class="radio-text">Hotel 70, cleared to cross Runway 02.</span>
+                        </div>
+                        <div class="radio-message">
+                            <span class="radio-time">10:26</span>
+                            <span class="radio-sender you">YOU</span>
+                            <span class="radio-text">Cleared to cross Runway 02, Hotel 70.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Transcript Section -->
+            <section id="transcript" class="section">
+                <h1 class="section-title">Live Transcript</h1>
+                <p class="section-subtitle">Real-time speech-to-text display</p>
+
+                <div style="max-width: 400px;">
+                    <div class="live-transcript">
+                        <div class="transcript-title">Live Transcript</div>
+                        <div class="transcript-text">"Hotel 70, taxi via Alpha..."</div>
+                        <div class="transcript-status">
+                            <span class="listening-dots">Listening</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Voice MCQ Screen Section -->
+            <section id="voice-mcq" class="section">
+                <h1 class="section-title">Voice MCQ Screen</h1>
+                <p class="section-subtitle">Complete screen layout preview</p>
+
+                <div class="screen-preview">
+                    <div class="screen-topbar">
+                        <div class="screen-topbar-left">
+                            <span class="screen-back">← Back</span>
+                            <span class="screen-title">Voice MCQ: Taxi Clearance</span>
+                        </div>
+                        <div class="screen-topbar-right">
+                            <span>Q 3/8</span>
+                            <span>💡 Help</span>
+                        </div>
+                    </div>
+                    <div class="screen-body">
+                        <div class="voice-mcq-layout">
+                            <div>
+                                <div class="question-card mb-6">
+                                    <div class="question-audio-btn">🔊 Play Audio</div>
+                                    <div class="question-label">Question</div>
+                                    <div class="question-text">Ground Controller says:</div>
+                                    <div class="atc-quote">"Hotel 70, taxi via Alpha, hold short Runway 02."</div>
+                                    <div class="question-text">Select the correct response and SPEAK it exactly:</div>
+                                </div>
+
+                                <div class="options-list">
+                                    <div class="option-item selected">
+                                        <span class="option-letter">A</span>
+                                        <span class="option-text">Hotel 70, taxi via Alpha, hold short Runway 02.</span>
+                                    </div>
+                                    <div class="option-item">
+                                        <span class="option-letter">B</span>
+                                        <span class="option-text">Copy, taxiing.</span>
+                                    </div>
+                                    <div class="option-item">
+                                        <span class="option-letter">C</span>
+                                        <span class="option-text">Roger, Alpha to 02.</span>
+                                    </div>
+                                    <div class="option-item">
+                                        <span class="option-letter">D</span>
+                                        <span class="option-text">Unable, standing by.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="mic-container mb-6">
+                                    <button class="mic-button listening">
+                                        <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                            <line x1="12" y1="19" x2="12" y2="23"/>
+                                            <line x1="8" y1="23" x2="16" y2="23"/>
+                                        </svg>
+                                    </button>
+                                    <span class="mic-label text-cyan">Listening...</span>
+                                </div>
+
+                                <div class="live-transcript mb-6">
+                                    <div class="transcript-title">Live Transcript</div>
+                                    <div class="transcript-text">"Hotel 70, taxi via Alpha..."</div>
+                                    <div class="transcript-status">
+                                        <span class="listening-dots">Listening</span>
+                                    </div>
+                                </div>
+
+                                <div class="quality-matrix">
+                                    <div class="quality-title">Quality Matrix</div>
+                                    <div class="quality-row">
+                                        <span class="quality-label">Clarity</span>
+                                        <div class="quality-bar-bg">
+                                            <div class="quality-bar" style="width: 85%; background: var(--cyan-info);"></div>
+                                        </div>
+                                        <span class="quality-value text-cyan">85%</span>
+                                    </div>
+                                    <div class="quality-row">
+                                        <span class="quality-label">Pace</span>
+                                        <div class="quality-bar-bg">
+                                            <div class="quality-bar" style="width: 70%; background: var(--cyan-info);"></div>
+                                        </div>
+                                        <span class="quality-value text-cyan">70%</span>
+                                    </div>
+                                    <div class="quality-row">
+                                        <span class="quality-label">Structure</span>
+                                        <div class="quality-bar-bg">
+                                            <div class="quality-bar" style="width: 90%; background: var(--green-success);"></div>
+                                        </div>
+                                        <span class="quality-value text-green">90%</span>
+                                    </div>
+                                    <div class="quality-row">
+                                        <span class="quality-label">Callsign</span>
+                                        <div class="quality-bar-bg">
+                                            <div class="quality-bar" style="width: 100%; background: var(--green-success);"></div>
+                                        </div>
+                                        <span class="quality-value text-green">100%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Debrief Modal Section -->
+            <section id="debrief" class="section">
+                <h1 class="section-title">Debrief Modal</h1>
+                <p class="section-subtitle">Session completion summary</p>
+
+                <div class="debrief-modal">
+                    <h2 class="debrief-title">Session Complete</h2>
+
+                    <div class="score-circle good">
+                        <span class="score-value text-cyan">85%</span>
+                        <span class="score-grade text-cyan">GOOD</span>
+                    </div>
+
+                    <div class="debrief-divider"></div>
+
+                    <div class="debrief-section-title">Breakdown</div>
+                    <div class="quality-row">
+                        <span class="quality-label">Accuracy</span>
+                        <div class="quality-bar-bg">
+                            <div class="quality-bar" style="width: 80%; background: var(--cyan-info);"></div>
+                        </div>
+                        <span class="quality-value">80%</span>
+                    </div>
+                    <div class="quality-row">
+                        <span class="quality-label">Voice</span>
+                        <div class="quality-bar-bg">
+                            <div class="quality-bar" style="width: 70%; background: var(--cyan-info);"></div>
+                        </div>
+                        <span class="quality-value">70%</span>
+                    </div>
+                    <div class="quality-row">
+                        <span class="quality-label">Speed</span>
+                        <div class="quality-bar-bg">
+                            <div class="quality-bar" style="width: 95%; background: var(--green-success);"></div>
+                        </div>
+                        <span class="quality-value">95%</span>
+                    </div>
+                    <div class="quality-row">
+                        <span class="quality-label">R/T Form</span>
+                        <div class="quality-bar-bg">
+                            <div class="quality-bar" style="width: 85%; background: var(--cyan-info);"></div>
+                        </div>
+                        <span class="quality-value">85%</span>
+                    </div>
+
+                    <div class="debrief-divider"></div>
+
+                    <div class="debrief-section-title">Areas to Improve</div>
+                    <ul class="improvement-list">
+                        <li>Readback: Include full callsign at end</li>
+                        <li>Pace: Slightly too fast on clearances</li>
+                    </ul>
+
+                    <div class="debrief-divider"></div>
+
+                    <div class="debrief-section-title">Ideal Response</div>
+                    <div class="ideal-response">"Hotel 70, taxi via Alpha, hold short Runway 02."</div>
+
+                    <div class="debrief-actions">
+                        <button class="btn btn-secondary">🔄 Retry</button>
+                        <button class="btn btn-secondary">📊 Details</button>
+                        <button class="btn btn-primary">Continue →</button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        // Simple navigation highlight
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                e.target.classList.add('active');
+            });
+        });
+
+        // Intersection observer for nav highlighting
+        const sections = document.querySelectorAll('.section');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === '#' + id) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, { threshold: 0.3 });
+
+        sections.forEach(section => observer.observe(section));
+    </script>
+</body>
+</html>

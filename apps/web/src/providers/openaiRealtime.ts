@@ -369,6 +369,7 @@ export class OpenAIRealtimeAdapter extends BaseProviderAdapter {
         input_audio_format: 'pcm16',
         input_audio_transcription: {
           model: this.openaiConfig.transcriptionModel || 'whisper-1',
+          language: this.openaiConfig.language || 'en', // IMPORTANT: Force English transcription
         },
         turn_detection: this.openaiConfig.enableVAD
           ? {
@@ -796,5 +797,32 @@ export class OpenAIRealtimeAdapter extends BaseProviderAdapter {
     this.accumulatedTranscript = '';
     this.speechStartTime = null;
     this.isResponseRequested = false;
+  }
+
+  /**
+   * Reset for new recording without disconnecting WebSocket.
+   * Clears transcript state but keeps session and connection alive.
+   * Used by connection pool to prepare for next recording.
+   */
+  override resetForNewRecording(): void {
+    super.resetForNewRecording();
+
+    // Reset OpenAI-specific transcript state
+    this.accumulatedTranscript = '';
+    this.speechStartTime = null;
+    this.isResponseRequested = false;
+
+    // Keep sessionId - we're reusing the session
+    // The WebSocket connection and session remain active
+
+    this.log('Reset for new recording (keeping session)', { sessionId: this.sessionId });
+  }
+
+  /**
+   * Check if the OpenAI session is ready for audio streaming.
+   * Returns true only when WebSocket is connected AND session is established.
+   */
+  isSessionReady(): boolean {
+    return this.isConnected() && this.sessionId !== null;
   }
 }

@@ -3,8 +3,13 @@
  *
  * Re-exports all scoring functions for convenient import.
  *
+ * Scoring Model:
+ * - Accuracy (50%): Pure text similarity
+ * - Fluency (30%): Clean speech without fillers
+ * - Structure (20%): Radio protocol adherence
+ *
  * Usage:
- *   import { calculateClarity, calculatePace, calculateStructure, calculateOverall } from '@/scoring';
+ *   import { calculateAccuracy, calculateFluency, calculateStructure, calculateOverall } from '@/scoring';
  *   // or
  *   import * as scoring from '@/scoring';
  */
@@ -18,14 +23,14 @@ export { calculateSimilarity } from "./similarity";
 // Filler word detection
 export { detectFillers, countTotalFillers } from "./fillers";
 
-// Clarity scoring
-export { calculateClarity } from "./clarity";
+// Accuracy scoring (50% weight)
+export { calculateAccuracy } from "./accuracy";
 
-// Pace scoring
-export { calculatePace } from "./pace";
+// Fluency scoring (30% weight)
+export { calculateFluency } from "./fluency";
 
-// Structure scoring
+// Structure scoring (20% weight)
 export { calculateStructure } from "./structure";
 
 // Overall score calculation
-export { calculateOverall } from "./overall";
+export { calculateOverall, getScoringWeights } from "./overall";

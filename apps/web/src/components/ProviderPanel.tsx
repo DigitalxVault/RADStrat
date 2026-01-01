@@ -123,8 +123,8 @@ export function ProviderPanel({
       {result && status === "completed" && result.metrics && (
         <div className="mb-4">
           <ScoreBreakdown
-            clarity={result.metrics.clarity}
-            pace={result.metrics.pace}
+            accuracy={result.metrics.accuracy}
+            fluency={result.metrics.fluency}
             structure={result.metrics.structure}
             overall={result.metrics.overall}
             breakdown={result.breakdown ?? undefined}
