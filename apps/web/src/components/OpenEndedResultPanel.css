@@ -1,0 +1,426 @@
+/**
+ * OpenEndedResultPanel Styles
+ *
+ * Tactical/aviation-inspired styling for AI scoring results display.
+ * Features prominent overall score, animated progress bars, and clear feedback sections.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+.oer-panel {
+  --oer-bg: #0f1114;
+  --oer-surface: #1a1d21;
+  --oer-border: #2a2f36;
+  --oer-text: #e2e8f0;
+  --oer-text-muted: #6b7280;
+  --oer-accent: #f59e0b;
+  --oer-accent-glow: rgba(245, 158, 11, 0.4);
+  --oer-excellent: #10b981;
+  --oer-excellent-glow: rgba(16, 185, 129, 0.4);
+  --oer-good: #3b82f6;
+  --oer-good-glow: rgba(59, 130, 246, 0.4);
+  --oer-fair: #f59e0b;
+  --oer-fair-glow: rgba(245, 158, 11, 0.4);
+  --oer-poor: #ef4444;
+  --oer-poor-glow: rgba(239, 68, 68, 0.4);
+  --oer-radius: 12px;
+  --oer-font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  --oer-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  background: var(--oer-bg);
+  border: 1px solid var(--oer-border);
+  border-radius: var(--oer-radius);
+  font-family: var(--oer-font-sans);
+  animation: slideIn 0.4s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading state */
+.oer-panel--loading {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.oer-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.oer-loading-spinner {
+  width: 48px;
+  height: 48px;
+  color: var(--oer-accent);
+  animation: spin 1.5s linear infinite;
+}
+
+.oer-loading-spinner svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.oer-loading-text {
+  font-family: var(--oer-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--oer-text-muted);
+}
+
+/* Overall score section */
+.oer-overall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+  background: var(--oer-surface);
+  border: 1px solid var(--oer-border);
+  border-radius: var(--oer-radius);
+  position: relative;
+  overflow: hidden;
+}
+
+.oer-overall-score-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 1;
+}
+
+.oer-overall-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.oer-score-value {
+  font-family: var(--oer-font-mono);
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.oer-score-max {
+  font-family: var(--oer-font-mono);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--oer-text-muted);
+}
+
+.oer-overall-label {
+  font-family: var(--oer-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--oer-text-muted);
+}
+
+/* Progress ring */
+.oer-overall-ring {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  opacity: 0.3;
+}
+
+.oer-ring-bg {
+  stroke: var(--oer-border);
+}
+
+.oer-ring-progress {
+  transition: stroke-dasharray 0.8s ease-out;
+}
+
+/* Score color classes */
+.oer-score--excellent {
+  color: var(--oer-excellent);
+}
+
+.oer-score--excellent .oer-ring-progress,
+.oer-metric-fill.oer-score--excellent {
+  stroke: var(--oer-excellent);
+  background: linear-gradient(90deg, var(--oer-excellent), var(--oer-excellent-glow));
+  box-shadow: 0 0 20px var(--oer-excellent-glow);
+}
+
+.oer-score--good {
+  color: var(--oer-good);
+}
+
+.oer-score--good .oer-ring-progress,
+.oer-metric-fill.oer-score--good {
+  stroke: var(--oer-good);
+  background: linear-gradient(90deg, var(--oer-good), var(--oer-good-glow));
+  box-shadow: 0 0 20px var(--oer-good-glow);
+}
+
+.oer-score--fair {
+  color: var(--oer-fair);
+}
+
+.oer-score--fair .oer-ring-progress,
+.oer-metric-fill.oer-score--fair {
+  stroke: var(--oer-fair);
+  background: linear-gradient(90deg, var(--oer-fair), var(--oer-fair-glow));
+  box-shadow: 0 0 20px var(--oer-fair-glow);
+}
+
+.oer-score--poor {
+  color: var(--oer-poor);
+}
+
+.oer-score--poor .oer-ring-progress,
+.oer-metric-fill.oer-score--poor {
+  stroke: var(--oer-poor);
+  background: linear-gradient(90deg, var(--oer-poor), var(--oer-poor-glow));
+  box-shadow: 0 0 20px var(--oer-poor-glow);
+}
+
+/* Section titles */
+.oer-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--oer-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--oer-accent);
+  margin: 0 0 16px 0;
+}
+
+.oer-title-icon {
+  display: flex;
+  width: 14px;
+  height: 14px;
+}
+
+.oer-title-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Score breakdown section */
+.oer-breakdown {
+  padding: 20px;
+  background: var(--oer-surface);
+  border: 1px solid var(--oer-border);
+  border-radius: var(--oer-radius);
+}
+
+.oer-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Individual metric */
+.oer-metric {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto auto;
+  gap: 4px 12px;
+  align-items: center;
+}
+
+.oer-metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  grid-column: 1;
+}
+
+.oer-metric-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--oer-text);
+}
+
+.oer-metric-weight {
+  font-family: var(--oer-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--oer-text-muted);
+  padding: 2px 6px;
+  background: var(--oer-bg);
+  border-radius: 4px;
+}
+
+.oer-metric-sublabel {
+  grid-column: 1;
+  font-size: 11px;
+  color: var(--oer-text-muted);
+}
+
+.oer-metric-bar {
+  grid-column: 1;
+  height: 8px;
+  background: var(--oer-bg);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.oer-metric-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease-out;
+}
+
+.oer-metric-score {
+  grid-column: 2;
+  grid-row: 1 / 4;
+  font-family: var(--oer-font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* Feedback section */
+.oer-feedback {
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.03) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--oer-radius);
+}
+
+.oer-feedback-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--oer-text);
+  margin: 0;
+}
+
+/* Protocol notes section */
+.oer-protocol-notes {
+  padding: 20px;
+  background: var(--oer-surface);
+  border: 1px solid var(--oer-border);
+  border-radius: var(--oer-radius);
+}
+
+.oer-protocol-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--oer-text-muted);
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .oer-panel {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .oer-overall {
+    padding: 16px;
+  }
+
+  .oer-score-value {
+    font-size: 44px;
+  }
+
+  .oer-score-max {
+    font-size: 16px;
+  }
+
+  .oer-breakdown,
+  .oer-feedback,
+  .oer-protocol-notes {
+    padding: 16px;
+  }
+
+  .oer-metric {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .oer-metric-score {
+    grid-column: 1;
+    grid-row: auto;
+    text-align: left;
+    font-size: 20px;
+    margin-top: 8px;
+  }
+}
+
+/* Animation for progress bars on mount */
+@keyframes fillBar {
+  from {
+    width: 0;
+  }
+}
+
+.oer-metric-fill {
+  animation: fillBar 0.6s ease-out;
+}
+
+/* Glow effect on overall score */
+.oer-overall::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 50%,
+    var(--oer-accent-glow) 0%,
+    transparent 70%
+  );
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.oer-overall.oer-score--excellent::before {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 50%,
+    var(--oer-excellent-glow) 0%,
+    transparent 70%
+  );
+}
+
+.oer-overall.oer-score--good::before {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 50%,
+    var(--oer-good-glow) 0%,
+    transparent 70%
+  );
+}
+
+.oer-overall.oer-score--poor::before {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 50%,
+    var(--oer-poor-glow) 0%,
+    transparent 70%
+  );
+}

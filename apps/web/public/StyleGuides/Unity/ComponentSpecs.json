@@ -1,0 +1,293 @@
+{
+  "$schema": "RTTrainer Component Specifications",
+  "version": "1.0",
+  "lastUpdated": "2024-12",
+
+  "colorTokens": {
+    "base": {
+      "slate900": { "hex": "#0F172A", "rgb": [15, 23, 42], "usage": "Primary backgrounds" },
+      "slate800": { "hex": "#1E293B", "rgb": [30, 41, 59], "usage": "Card backgrounds" },
+      "slate700": { "hex": "#334155", "rgb": [51, 65, 85], "usage": "Secondary panels" },
+      "slate600": { "hex": "#475569", "rgb": [71, 85, 105], "usage": "Borders, dividers" },
+      "slate400": { "hex": "#94A3B8", "rgb": [148, 163, 184], "usage": "Secondary text" },
+      "slate200": { "hex": "#E2E8F0", "rgb": [226, 232, 240], "usage": "Primary text" },
+      "charcoal": { "hex": "#18181B", "rgb": [24, 24, 27], "usage": "Deep backgrounds" }
+    },
+    "accent": {
+      "amberWarning": { "hex": "#F59E0B", "rgb": [245, 158, 11], "usage": "Warnings" },
+      "cyanInfo": { "hex": "#06B6D4", "rgb": [6, 182, 212], "usage": "Info, active states" },
+      "greenSuccess": { "hex": "#22C55E", "rgb": [34, 197, 94], "usage": "Success, correct" },
+      "redCritical": { "hex": "#EF4444", "rgb": [239, 68, 68], "usage": "Error, critical" }
+    }
+  },
+
+  "typography": {
+    "fontFamilies": {
+      "primary": "Inter",
+      "mono": "JetBrains Mono"
+    },
+    "scale": {
+      "displayXL": { "size": 48, "lineHeight": 1.1, "weight": "bold" },
+      "displayL": { "size": 36, "lineHeight": 1.2, "weight": "bold" },
+      "heading1": { "size": 28, "lineHeight": 1.3, "weight": "semibold" },
+      "heading2": { "size": 24, "lineHeight": 1.3, "weight": "semibold" },
+      "heading3": { "size": 20, "lineHeight": 1.4, "weight": "semibold" },
+      "bodyL": { "size": 18, "lineHeight": 1.5, "weight": "regular" },
+      "bodyM": { "size": 16, "lineHeight": 1.5, "weight": "regular" },
+      "bodyS": { "size": 14, "lineHeight": 1.5, "weight": "regular" },
+      "caption": { "size": 12, "lineHeight": 1.4, "weight": "regular" },
+      "monoL": { "size": 18, "lineHeight": 1.6, "weight": "regular", "font": "mono" },
+      "monoM": { "size": 16, "lineHeight": 1.6, "weight": "regular", "font": "mono" }
+    }
+  },
+
+  "spacing": {
+    "base": 4,
+    "scale": {
+      "0": 0,
+      "1": 4,
+      "2": 8,
+      "3": 12,
+      "4": 16,
+      "5": 20,
+      "6": 24,
+      "8": 32,
+      "10": 40,
+      "12": 48,
+      "16": 64
+    },
+    "semantic": {
+      "cardPadding": 16,
+      "sectionGap": 24,
+      "screenPadding": 32,
+      "elementGap": 12
+    }
+  },
+
+  "borderRadius": {
+    "none": 0,
+    "small": 4,
+    "medium": 8,
+    "large": 16,
+    "xlarge": 24,
+    "full": 9999,
+    "semantic": {
+      "card": 16,
+      "button": 8,
+      "input": 8,
+      "modal": 24,
+      "badge": 4
+    }
+  },
+
+  "animation": {
+    "duration": {
+      "instant": 0.05,
+      "fast": 0.1,
+      "normal": 0.2,
+      "slow": 0.3,
+      "xslow": 0.5,
+      "loading": 1.0
+    },
+    "easing": {
+      "default": "ease-out",
+      "stateChange": "ease-in-out",
+      "loading": "linear"
+    }
+  },
+
+  "components": {
+    "Button": {
+      "variants": ["Primary", "Secondary", "Ghost"],
+      "sizes": {
+        "small": { "height": 32, "paddingX": 16, "fontSize": 14 },
+        "medium": { "height": 40, "paddingX": 20, "fontSize": 16 },
+        "large": { "height": 48, "paddingX": 24, "fontSize": 18 }
+      },
+      "states": ["default", "hover", "pressed", "disabled"],
+      "colors": {
+        "primary": {
+          "default": { "bg": "#06B6D4", "text": "#0F172A" },
+          "hover": { "bg": "#67E8F9", "text": "#0F172A" },
+          "pressed": { "bg": "#06B6D4", "text": "#0F172A", "opacity": 0.9 },
+          "disabled": { "bg": "#475569", "text": "#94A3B8" }
+        }
+      }
+    },
+
+    "QuestionCard": {
+      "props": ["questionText", "contextTag", "difficulty", "hintAvailable", "audioClip", "atcText"],
+      "layout": {
+        "padding": 24,
+        "gap": 16,
+        "borderRadius": 16
+      },
+      "children": ["AudioPlayButton", "ContextBadge", "QuestionText", "ATCQuote", "HintPanel"]
+    },
+
+    "OptionsList": {
+      "props": ["options", "selectedOptionId", "showLetters", "revealMode", "interactable"],
+      "optionStates": {
+        "default": { "bg": "#334155", "border": "#475569" },
+        "hover": { "bg": "#475569", "border": "#64748B" },
+        "selected": { "bg": "#334155", "border": "#06B6D4", "borderWidth": 2 },
+        "correct": { "bg": "rgba(34,197,94,0.2)", "border": "#22C55E" },
+        "incorrect": { "bg": "rgba(239,68,68,0.2)", "border": "#EF4444" },
+        "disabled": { "bg": "#1E293B", "border": "#334155" }
+      }
+    },
+
+    "MicButton": {
+      "props": ["state", "showLabel", "size"],
+      "sizes": {
+        "medium": 64,
+        "large": 80
+      },
+      "states": {
+        "idle": {
+          "icon": "mic",
+          "bg": "#334155",
+          "animation": "none",
+          "label": "Tap to Speak"
+        },
+        "listening": {
+          "icon": "mic",
+          "bg": "#06B6D4",
+          "animation": "pulse",
+          "glow": "rgba(6,182,212,0.5)",
+          "label": "Listening..."
+        },
+        "processing": {
+          "icon": "spinner",
+          "bg": "#06B6D4",
+          "animation": "rotate",
+          "label": "Processing..."
+        },
+        "success": {
+          "icon": "check",
+          "bg": "#22C55E",
+          "animation": "pop",
+          "label": "Got it!"
+        },
+        "fail": {
+          "icon": "x",
+          "bg": "#EF4444",
+          "animation": "shake",
+          "label": "Try Again"
+        }
+      },
+      "animations": {
+        "pulse": { "duration": 1.0, "scaleRange": [1.0, 1.1] },
+        "rotate": { "duration": 1.0, "degrees": 360, "loop": true },
+        "pop": { "duration": 0.3, "scaleKeyframes": [0.8, 1.1, 1.0] },
+        "shake": { "duration": 0.5, "offsetX": [-5, 5, -5, 0], "cycles": 3 }
+      }
+    },
+
+    "LiveTranscript": {
+      "props": ["text", "confidence", "isListening", "highlightErrors"],
+      "styling": {
+        "font": "monoL",
+        "padding": 16,
+        "borderRadius": 8
+      },
+      "confidenceColors": {
+        "high": "#E2E8F0",
+        "medium": "#F59E0B",
+        "low": "#EF4444"
+      },
+      "confidenceThresholds": {
+        "high": 0.8,
+        "medium": 0.5
+      }
+    },
+
+    "QualityMatrixPanel": {
+      "props": ["clarityScore", "paceScore", "structureScore", "callsignScore", "showLabels", "animated"],
+      "metrics": ["Clarity", "Pace", "Structure", "Callsign"],
+      "barColors": {
+        "ranges": [
+          { "max": 0.4, "color": "#EF4444" },
+          { "max": 0.7, "color": "#F59E0B" },
+          { "max": 0.9, "color": "#06B6D4" },
+          { "max": 1.0, "color": "#22C55E" }
+        ]
+      }
+    },
+
+    "RadioLogPanel": {
+      "props": ["messages", "maxVisible", "autoScroll", "showTimestamps"],
+      "messageFormat": {
+        "timestamp": { "font": "caption", "color": "#94A3B8" },
+        "sender": { "font": "caption", "style": "badge" },
+        "message": { "font": "monoM", "color": "#E2E8F0" }
+      },
+      "senderBadges": {
+        "GND": { "bg": "#F59E0B", "text": "#0F172A", "label": "Ground" },
+        "TWR": { "bg": "#06B6D4", "text": "#0F172A", "label": "Tower" },
+        "YOU": { "bg": "#22C55E", "text": "#0F172A", "label": "You" },
+        "OTH": { "bg": "#64748B", "text": "#E2E8F0", "label": "Other" }
+      }
+    },
+
+    "DebriefModal": {
+      "props": ["overallScore", "breakdown", "mistakes", "idealPhrase", "showReplay"],
+      "scoreGrades": {
+        "excellent": { "min": 0.9, "color": "#22C55E", "label": "EXCELLENT" },
+        "good": { "min": 0.75, "color": "#06B6D4", "label": "GOOD" },
+        "fair": { "min": 0.6, "color": "#F59E0B", "label": "FAIR" },
+        "needsWork": { "min": 0, "color": "#EF4444", "label": "NEEDS WORK" }
+      },
+      "sections": ["ScoreCircle", "Breakdown", "Improvements", "IdealResponse", "Actions"]
+    }
+  },
+
+  "layouts": {
+    "Dashboard": {
+      "regions": {
+        "topBar": { "height": 64 },
+        "leftNav": { "width": 160 },
+        "main": { "flex": 1 }
+      }
+    },
+    "TwoColumn": {
+      "regions": {
+        "topBar": { "height": 64 },
+        "left": { "width": "50%" },
+        "right": { "width": "50%" }
+      }
+    },
+    "HUDOverlay": {
+      "regions": {
+        "topLeft": { "anchor": "top-left", "padding": 16 },
+        "topRight": { "anchor": "top-right", "padding": 16 },
+        "bottomLeft": { "anchor": "bottom-left", "padding": 16 },
+        "bottomCenter": { "anchor": "bottom-center", "padding": 16 },
+        "bottomRight": { "anchor": "bottom-right", "padding": 16 }
+      }
+    }
+  },
+
+  "roleColors": {
+    "Bowser": { "hex": "#3D5A3D", "icon": "fuel-truck" },
+    "SecurityTrooper": { "hex": "#2D2D4A", "icon": "shield" },
+    "AFE": { "hex": "#4A4A2D", "icon": "wrench" },
+    "Contractor": { "hex": "#4A4A4A", "icon": "hard-hat" },
+    "FireTender": { "hex": "#5A2D2D", "icon": "fire" }
+  },
+
+  "icons": {
+    "required": [
+      "radio", "mic", "mic-off", "volume", "volume-off",
+      "timer", "check", "x", "alert", "info",
+      "plane", "vehicle", "tower", "runway", "map",
+      "settings", "user", "play", "retry", "back", "next", "hint"
+    ],
+    "sizes": {
+      "small": 16,
+      "medium": 24,
+      "large": 32,
+      "xlarge": 48
+    }
+  }
+}
